@@ -1,0 +1,11 @@
+apiVersion: tenancy.kcp.dev/v1alpha1
+kind: ClusterWorkspaceType
+metadata:
+  name: ocmhub
+spec:
+  extend:
+    with:
+    - name: universal
+      path: root
+  additionalWorkspaceLabels:
+    "kcp-integration.open-cluster-management.io/hub": "true"

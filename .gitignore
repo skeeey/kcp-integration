@@ -5,6 +5,8 @@
 *.so
 *.dylib
 
+kcp-integration
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -13,3 +15,12 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+contrib/kcp
+contrib/.kcp
+contrib/kubeconfig
+contrib/kcp-started
+contrib/*.log
+
+*.kubeconfig
+rootca.*

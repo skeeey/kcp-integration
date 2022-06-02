@@ -1,0 +1,17 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name:  open-cluster-management:managedclusters:{{ .OrgWorkspaceName }}:{{ .WorkspaceName }}
+  annotations:
+    kcp.dev/cluster: root:{{ .OrgWorkspaceName }}
+  labels:
+    workspaces.kcp.dev/name: {{ .WorkspaceName }}
+rules:
+- apiGroups:
+  - tenancy.kcp.dev
+  resources:
+  - workspaces/content
+  resourceNames:
+  - {{ .WorkspaceName }}
+  verbs:
+  - admin

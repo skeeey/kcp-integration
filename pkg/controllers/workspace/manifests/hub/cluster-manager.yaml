@@ -1,0 +1,12 @@
+apiVersion: operator.open-cluster-management.io/v1
+kind: ClusterManager
+metadata:
+  name: {{ .ClusterManagerName }}
+  annotations:
+    "kcp-integration.open-cluster-management.io/workspace": "{{ .Org }}:{{ .Workspace }}"
+spec:
+  registrationImagePullSpec: quay.io/skeeey/registration:kcp-latest
+  workImagePullSpec: quay.io/open-cluster-management/work
+  placementImagePullSpec: quay.io/open-cluster-management/placement
+  deployOption:
+    mode: Hosted
