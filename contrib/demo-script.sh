@@ -36,7 +36,9 @@ comment "Import the managed cluster"
 pe "kubectl apply --kubeconfig kubeconfig/cluster1.kubeconfig -k clusters/cluster1"
 
 comment "Approve the managed cluter CSR"
-pe "kubectl get csr -l open-cluster-management.io/cluster-name=cluster1 | grep Pending | awk '{print $1}' | xargs kubectl certificate approve"
-#pe "kubectl get managedclusters -w"
+pe "kubectl get csr -w"
+csr_name=$(kubectl get csr -l open-cluster-management.io/cluster-name=cluster1 | grep Pending | awk '{print $1}')
+pe "kubectl certificate approve $csr_name"
+pe "kubectl get managedclusters -w"
 
 unset KUBECONFIG

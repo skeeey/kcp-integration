@@ -26,6 +26,9 @@ if [ "$BUILD_BINARY" = "true" ]; then
     popd
 fi
 
+generate_ca "${DEMO_DIR}"
+KCP_SERVER_ARGS="${KCP_SERVER_ARGS} --client-ca-file ${DEMO_DIR}/rootca.crt"
+
 echo "Starting KCP server ..."
 (cd "${DEMO_DIR}" && exec "${KCP_DIR}"/bin/kcp start $KCP_SERVER_ARGS) &> kcp.log &
 KCP_PID=$!

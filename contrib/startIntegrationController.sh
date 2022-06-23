@@ -57,7 +57,11 @@ if [ "$IN_CLUSTER" = "true" ]; then
     exit 0
 fi
 
-CTRL_ARGS="--disable-leader-election --namespace=default --kcp-kubeconfig=${KCP_KUBECONFIG} --kcp-signing-cert-file=${DEMO_DIR}/.kcp/apiserver.crt --kcp-signing-key-file=${DEMO_DIR}/.kcp/apiserver.key --kubeconfig=${HUB_KUBECONFIG} --registration-webhook-host=${registration_webhook_host} --work-webhook-host=${work_webhook_host}"
+CTRL_ARGS="--disable-leader-election --namespace=default"
+CTRL_ARGS="${CTRL_ARGS} --kcp-kubeconfig=${KCP_KUBECONFIG} --kubeconfig=${HUB_KUBECONFIG}"
+CTRL_ARGS="${CTRL_ARGS} --kcp-signing-cert-file=${DEMO_DIR}/rootca.crt --kcp-signing-key-file=${DEMO_DIR}/rootca.key"
+CTRL_ARGS="${CTRL_ARGS} --registration-webhook-host=${registration_webhook_host}"
+CTRL_ARGS="${CTRL_ARGS} --work-webhook-host=${work_webhook_host}"
 
 # (cd "${ROOT_DIR}" && exec "${ROOT_DIR}"/kcp-integration controller ${CTRL_ARGS}) &> kcp-integration-controller.log &
 # KCP_OCM_PID=$!
