@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"strings"
 	"text/template"
 
@@ -15,8 +16,10 @@ import (
 
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -99,6 +102,60 @@ func GetWorkspaceURL(workspace runtime.Object) string {
 	return url
 }
 
+func IsWorkspaceStatusConditionTrue(workspace runtime.Object, conditionType string) bool {
+	unstructuredWorkspace, err := runtime.DefaultUnstructuredConverter.ToUnstructured(workspace)
+	if err != nil {
+		panic(err)
+	}
+
+	conditions, found, err := unstructured.NestedSlice(unstructuredWorkspace, "status", "conditions")
+	if err != nil {
+		panic(err)
+	}
+
+	if !found {
+		return false
+	}
+
+	return meta.IsStatusConditionTrue(ToConditions(conditions), conditionType)
+}
+
+func ToConditions(slice []interface{}) []metav1.Condition {
+	conditions := []metav1.Condition{}
+	for _, item := range slice {
+		data, err := json.Marshal(&item)
+		if err != nil {
+			panic(err)
+		}
+
+		strMap := map[string]interface{}{}
+		if err := json.Unmarshal(data, &strMap); err != nil {
+			panic(err)
+		}
+
+		condition := metav1.Condition{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(strMap, &condition); err != nil {
+			panic(err)
+		}
+
+		conditions = append(conditions, condition)
+	}
+
+	return conditions
+}
+
+func ToConditionSlice(conditions []metav1.Condition) []interface{} {
+	slice := []interface{}{}
+	for _, condition := range conditions {
+		conditionMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&condition)
+		if err != nil {
+			panic(err)
+		}
+		slice = append(slice, conditionMap)
+	}
+	return slice
+}
+
 func Indent(indention int, v []byte) string {
 	newline := "\n" + strings.Repeat(" ", indention)
 	return strings.Replace(string(v), "\n", newline, -1)
@@ -136,6 +193,12 @@ func ApplyObjects(ctx context.Context,
 			errs = append(errs, err)
 		case *corev1.Service:
 			_, _, err := resourceapply.ApplyService(ctx, kubeClient.CoreV1(), recorder, required)
+			errs = append(errs, err)
+		case *rbacv1.ClusterRole:
+			_, _, err := resourceapply.ApplyClusterRole(ctx, kubeClient.RbacV1(), recorder, required)
+			errs = append(errs, err)
+		case *rbacv1.ClusterRoleBinding:
+			_, _, err := resourceapply.ApplyClusterRoleBinding(ctx, kubeClient.RbacV1(), recorder, required)
 			errs = append(errs, err)
 		case *admissionv1.MutatingWebhookConfiguration:
 			_, _, err := resourceapply.ApplyMutatingWebhookConfiguration(ctx, kubeClient.AdmissionregistrationV1(), recorder, required)

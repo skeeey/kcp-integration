@@ -4,7 +4,6 @@ import (
 	"context"
 	"embed"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -128,7 +127,10 @@ func (c *clusterManagerController) sync(ctx context.Context, controllerContext f
 	return c.updateWorksapceStatus(ctx, controllerContext, workspaceIds[0], workspaceIds[1], *appliedConditon)
 }
 
-func (c *clusterManagerController) updateWorksapceStatus(ctx context.Context, ctrlCtx factory.SyncContext, orgWorkspaceName, worksapceName string, appliedConditon metav1.Condition) error {
+func (c *clusterManagerController) updateWorksapceStatus(ctx context.Context,
+	ctrlCtx factory.SyncContext,
+	orgWorkspaceName, worksapceName string,
+	appliedConditon metav1.Condition) error {
 	workspaceConfig := rest.CopyConfig(c.kcpRestConfig)
 	workspaceConfig.Host = fmt.Sprintf("%s:%s", workspaceConfig.Host, orgWorkspaceName)
 
@@ -156,7 +158,7 @@ func (c *clusterManagerController) updateWorksapceStatus(ctx context.Context, ct
 		conditionSlice = []interface{}{}
 	}
 
-	oldConditions := toConditions(conditionSlice)
+	oldConditions := helpers.ToConditions(conditionSlice)
 
 	newConditions := append([]metav1.Condition{}, oldConditions...)
 	meta.SetStatusCondition(&newConditions, appliedConditon)
@@ -165,21 +167,26 @@ func (c *clusterManagerController) updateWorksapceStatus(ctx context.Context, ct
 		return nil
 	}
 
-	newConditionSlice := toConditionSlice(newConditions)
+	newConditionSlice := helpers.ToConditionSlice(newConditions)
 	if err := unstructured.SetNestedSlice(workspace.Object, newConditionSlice, "status", "conditions"); err != nil {
 		return err
 	}
 
-	if _, err := dynamicClient.Resource(helpers.ClusterWorkspaceGVR).UpdateStatus(ctx, workspace, metav1.UpdateOptions{}); err != nil {
+	if _, err := dynamicClient.Resource(helpers.ClusterWorkspaceGVR).
+		UpdateStatus(ctx, workspace, metav1.UpdateOptions{}); err != nil {
 		return err
 	}
 
-	ctrlCtx.Recorder().Eventf("UpdateWorkspaceStatus", "The workspace root:%s:%s %s status was updated, due to %s", orgWorkspaceName, worksapceName, clusterManagerApplied, appliedConditon.Reason)
+	ctrlCtx.Recorder().Eventf("UpdateWorkspaceStatus", "The workspace root:%s:%s %s status was updated, due to %s",
+		orgWorkspaceName, worksapceName, clusterManagerApplied, appliedConditon.Reason)
 	return nil
 }
 
-func (c *clusterManagerController) applyWebhooks(ctx context.Context, ctrlCtx factory.SyncContext, clusterManagerName, workspaceId string) error {
-	caBundleConfigMap, err := c.hubKubeClient.CoreV1().ConfigMaps(clusterManagerName).Get(ctx, caBundleConfigmapName, metav1.GetOptions{})
+func (c *clusterManagerController) applyWebhooks(ctx context.Context,
+	ctrlCtx factory.SyncContext,
+	clusterManagerName, workspaceId string) error {
+	caBundleConfigMap, err := c.hubKubeClient.CoreV1().
+		ConfigMaps(clusterManagerName).Get(ctx, caBundleConfigmapName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -207,7 +214,15 @@ func (c *clusterManagerController) applyWebhooks(ctx context.Context, ctrlCtx fa
 		CABundle:                base64.StdEncoding.EncodeToString([]byte(caBundle)),
 	}
 
-	return helpers.ApplyObjects(ctx, workspaceKubeClient, nil, ctrlCtx.Recorder(), manifestFiles, config, webhookFiles...)
+	return helpers.ApplyObjects(
+		ctx,
+		workspaceKubeClient,
+		nil,
+		ctrlCtx.Recorder(),
+		manifestFiles,
+		config,
+		webhookFiles...,
+	)
 }
 
 func isClusterManagerApplied(clusterManager *operatorv1.ClusterManager) *metav1.Condition {
@@ -252,40 +267,4 @@ func isClusterManagerApplied(clusterManager *operatorv1.ClusterManager) *metav1.
 	}
 
 	return appliedConditon
-}
-
-func toConditions(slice []interface{}) []metav1.Condition {
-	conditions := []metav1.Condition{}
-	for _, item := range slice {
-		data, err := json.Marshal(&item)
-		if err != nil {
-			panic(err)
-		}
-
-		strMap := map[string]interface{}{}
-		if err := json.Unmarshal(data, &strMap); err != nil {
-			panic(err)
-		}
-
-		condition := metav1.Condition{}
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(strMap, &condition); err != nil {
-			panic(err)
-		}
-
-		conditions = append(conditions, condition)
-	}
-
-	return conditions
-}
-
-func toConditionSlice(conditions []metav1.Condition) []interface{} {
-	slice := []interface{}{}
-	for _, condition := range conditions {
-		conditionMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&condition)
-		if err != nil {
-			panic(err)
-		}
-		slice = append(slice, conditionMap)
-	}
-	return slice
 }

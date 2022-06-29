@@ -79,12 +79,12 @@ func (c *orgWorkspaceController) sync(ctx context.Context, syncCtx factory.SyncC
 	}
 
 	// only handle organization workspace currently
-	// TODO do we support to create the hub workspace on the kcp root?
+	// TODO do we support to create the hub workspace on the kcp root??
 	if helpers.GetWorkspaceType(workspace) != "Organization" {
 		return nil
 	}
 
-	//TODO add finalizer on workspace to handle workspace deletation
+	//TODO add finalizer on this workspace to handle workspace deletation
 
 	if helpers.GetWorkspacePhase(workspace) != "Ready" {
 		return nil

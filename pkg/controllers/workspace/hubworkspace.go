@@ -11,6 +11,8 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 
+	clusterclient "open-cluster-management.io/api/client/cluster/clientset/versioned"
+	clusterinformers "open-cluster-management.io/api/client/cluster/informers/externalversions"
 	operatorv1client "open-cluster-management.io/api/client/operator/clientset/versioned/typed/operator/v1"
 
 	"github.com/skeeey/kcp-integration/pkg/controllers/workspace/csr"
@@ -31,10 +33,10 @@ import (
 //go:embed manifests
 var manifestFiles embed.FS
 
-// var workspaceFiles = []string{
-// 	"manifests/workspace/kube-system-namespace.yaml",
-// 	"manifests/workspace/extension-apiserver-authentication-cm.yaml",
-// }
+var hubWorkspaceFiles = []string{
+	"manifests/workspace/hub-clusterrole.yaml",
+	"manifests/workspace/hub-clusterrolebinding.yaml",
+}
 
 var hubFiles = []string{
 	"manifests/hub/cluster-manager-namespace.yaml",
@@ -111,39 +113,20 @@ func (c *hubWorkspaceController) sync(ctx context.Context, syncCtx factory.SyncC
 	workspaceConfig := rest.CopyConfig(c.kcpRestConfig)
 	workspaceConfig.Host = helpers.GetWorkspaceURL(workspace)
 
-	// prepare kube-system/extension-apiserver-authentication configmap for manager cluster webhooks in the workspace
-	// TODO may ask kcp to support
-	// if err := ctrl.prepareAuthConfigMap(ctx, syncCtx, workspaceConfig); err != nil {
-	// 	return err
-	// }
-
 	// prepare cluster manager on hub
-	if err := c.prepareClusterManager(ctx, syncCtx, workspaceName, workspaceConfig); err != nil {
+	if err := c.prepareClusterManager(ctx, workspaceName, workspaceConfig); err != nil {
 		return err
+	}
+
+	// wait the cluster manager is deployed
+	if !helpers.IsWorkspaceStatusConditionTrue(workspace, "ClusterManagerApplied") {
+		return nil
 	}
 
 	return c.startHubControllers(ctx, workspaceName, workspaceConfig)
 }
 
-// func (ctrl *ocmHubWorkspaceController) prepareAuthConfigMap(ctx context.Context, syncCtx factory.SyncContext, restConfig *rest.Config) error {
-// 	workspaceKubeClient, err := kubernetes.NewForConfig(restConfig)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	config := struct {
-// 		CABundle    string
-// 		ReqCABundle string
-// 	}{
-// 		CABundle:    helpers.Indent(4, restConfig.CAData),
-// 		ReqCABundle: helpers.Indent(4, restConfig.CAData),
-// 	}
-
-// 	return helpers.ApplyObjects(ctx, workspaceKubeClient, nil, syncCtx.Recorder(), manifestFiles, config, workspaceFiles...)
-// }
-
 func (c *hubWorkspaceController) prepareClusterManager(ctx context.Context,
-	syncCtx factory.SyncContext,
 	workspaceName string,
 	restConfig *rest.Config) error {
 	kubeConfigData, err := clientcmd.Write(buildKubeconfig(restConfig))
@@ -167,7 +150,7 @@ func (c *hubWorkspaceController) prepareClusterManager(ctx context.Context,
 		ctx,
 		c.hubKubeClient,
 		c.clusterMangerClient,
-		syncCtx.Recorder(),
+		c.eventRecorder,
 		manifestFiles,
 		config,
 		hubFiles...,
@@ -186,10 +169,16 @@ func (c *hubWorkspaceController) startHubControllers(ctx context.Context,
 		return err
 	}
 
+	clusterClient, err := clusterclient.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
 	workspaceCtx, cancel := context.WithCancel(ctx)
 	c.controllers[workspaceName] = cancel
 
 	kubeInfomer := informers.NewSharedInformerFactory(kubeClient, 10*time.Minute)
+	clusterInformers := clusterinformers.NewSharedInformerFactory(clusterClient, 10*time.Minute)
 
 	csrSigningController := csr.NewCSRSigningController(
 		workspaceName,
@@ -200,9 +189,19 @@ func (c *hubWorkspaceController) startHubControllers(ctx context.Context,
 		c.eventRecorder,
 	)
 
+	clusterController := NewClusterController(
+		c.orgWorkspaceName,
+		workspaceName,
+		c.kcpRestConfig,
+		clusterInformers.Cluster().V1().ManagedClusters(),
+		c.eventRecorder,
+	)
+
 	go kubeInfomer.Start(workspaceCtx.Done())
+	go clusterInformers.Start(workspaceCtx.Done())
 
 	go csrSigningController.Run(workspaceCtx, 1)
+	go clusterController.Run(workspaceCtx, 1)
 
 	return nil
 }

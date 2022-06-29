@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: open-cluster-management:managedclusters:{{ .OrgWorkspaceName }}
+  clusterName: root
+rules:
+- apiGroups:
+  - tenancy.kcp.dev
+  resources:
+  - clusterworkspaces/content
+  resourceNames:
+  - {{ .OrgWorkspaceName }}
+  verbs:
+  - access
