@@ -38,6 +38,7 @@ var (
 
 func init() {
 	utilruntime.Must(corev1.AddToScheme(genericScheme))
+	utilruntime.Must(rbacv1.AddToScheme(genericScheme))
 	utilruntime.Must(admissionv1.AddToScheme(genericScheme))
 	utilruntime.Must(operatorv1.AddToScheme(genericScheme))
 }

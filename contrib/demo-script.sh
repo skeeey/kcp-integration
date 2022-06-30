@@ -22,7 +22,7 @@ comment "Create a hub workspace in acm workspace"
 pe "kubectl kcp workspace create hub --type Ocmhub"
 
 comment "Wait for the hub is deployed"
-pe "kubectl get clusterworkspace hub -ojsonpath='{.status.conditions}' -w"
+pe "kubectl get clusterworkspace hub -w -ojsonpath='{range .status.conditions[*]}{.type}{\"\\t\"}{.status}{\"\\n\"}{end}'"
 
 clear
 
