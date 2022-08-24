@@ -33,30 +33,28 @@ import (
 //go:embed manifests
 var manifestFiles embed.FS
 
-var hubWorkspaceFiles = []string{
-	"manifests/workspace/hub-clusterrole.yaml",
-	"manifests/workspace/hub-clusterrolebinding.yaml",
-}
-
 var hubFiles = []string{
 	"manifests/hub/cluster-manager-namespace.yaml",
 	"manifests/hub/external-hub-kubeconfig-secret.yaml",
+	// TODO services are only for prototype
 	"manifests/hub/cluster-manager-registration-webhook-service.yaml",
 	"manifests/hub/cluster-manager-work-webhook-service.yaml",
 	"manifests/hub/cluster-manager.yaml",
 }
 
 type hubWorkspaceController struct {
-	orgWorkspaceName    string
-	certFile            string
-	keyFile             string
-	kcpRestConfig       *rest.Config
-	hubKubeClient       kubernetes.Interface
-	clusterMangerClient operatorv1client.ClusterManagerInterface
-	workspaceLister     cache.GenericLister
-	cache               resourceapply.ResourceCache
-	controllers         map[string]context.CancelFunc
-	eventRecorder       events.Recorder
+	orgWorkspaceName            string
+	certFile                    string
+	keyFile                     string
+	kcpRestConfig               *rest.Config
+	hubKubeClient               kubernetes.Interface
+	clusterMangerClient         operatorv1client.ClusterManagerInterface
+	workspaceLister             cache.GenericLister
+	cache                       resourceapply.ResourceCache
+	controllers                 map[string]context.CancelFunc
+	registrationWebhookNodePort int //TODO: just for prototype
+	workWebhookNodePort         int //TODO: just for prototype
+	eventRecorder               events.Recorder
 }
 
 func NewHubWorkspaceController(
@@ -68,16 +66,18 @@ func NewHubWorkspaceController(
 	workspaceInformer informers.GenericInformer,
 	recorder events.Recorder) factory.Controller {
 	ctrl := &hubWorkspaceController{
-		orgWorkspaceName:    orgWorkspaceName,
-		certFile:            certFile,
-		keyFile:             keyFile,
-		kcpRestConfig:       kcpRestConfig,
-		hubKubeClient:       hubKubeClient,
-		clusterMangerClient: clusterMangerClient,
-		workspaceLister:     workspaceInformer.Lister(),
-		cache:               resourceapply.NewResourceCache(),
-		controllers:         map[string]context.CancelFunc{},
-		eventRecorder:       recorder,
+		orgWorkspaceName:            orgWorkspaceName,
+		certFile:                    certFile,
+		keyFile:                     keyFile,
+		kcpRestConfig:               kcpRestConfig,
+		hubKubeClient:               hubKubeClient,
+		clusterMangerClient:         clusterMangerClient,
+		workspaceLister:             workspaceInformer.Lister(),
+		cache:                       resourceapply.NewResourceCache(),
+		controllers:                 map[string]context.CancelFunc{},
+		registrationWebhookNodePort: 30442,
+		workWebhookNodePort:         30452,
+		eventRecorder:               recorder,
 	}
 
 	return factory.New().
@@ -134,16 +134,23 @@ func (c *hubWorkspaceController) prepareClusterManager(ctx context.Context,
 		return err
 	}
 
+	c.registrationWebhookNodePort = c.registrationWebhookNodePort + 1
+	c.workWebhookNodePort = c.workWebhookNodePort + 1
+
 	config := struct {
-		ClusterManagerName string
-		KubeConfig         string
-		Org                string
-		Workspace          string
+		ClusterManagerName          string
+		KubeConfig                  string
+		Org                         string
+		Workspace                   string
+		RegistrationWebhookNodePort int
+		WorkWebhookNodePort         int
 	}{
-		ClusterManagerName: fmt.Sprintf("kcp-%s-%s-cluster-manager", c.orgWorkspaceName, workspaceName),
-		KubeConfig:         base64.StdEncoding.EncodeToString(kubeConfigData),
-		Org:                c.orgWorkspaceName,
-		Workspace:          workspaceName,
+		ClusterManagerName:          fmt.Sprintf("kcp-%s-%s-cluster-manager", c.orgWorkspaceName, workspaceName),
+		KubeConfig:                  base64.StdEncoding.EncodeToString(kubeConfigData),
+		Org:                         c.orgWorkspaceName,
+		Workspace:                   workspaceName,
+		RegistrationWebhookNodePort: c.registrationWebhookNodePort,
+		WorkWebhookNodePort:         c.workWebhookNodePort,
 	}
 
 	return helpers.ApplyObjects(

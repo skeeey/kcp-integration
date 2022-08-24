@@ -7,7 +7,7 @@ spec:
     mode: Default
   registrationImagePullSpec: quay.io/open-cluster-management/registration
   workImagePullSpec: quay.io/open-cluster-management/work
-  clusterName: cluster1
+  clusterName: qe
   namespace: open-cluster-management-agent
   externalServerURLs:
-  - url: https://localhost
+  - url: https://qe-control-plane:6443

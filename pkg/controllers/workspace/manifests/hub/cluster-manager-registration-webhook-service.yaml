@@ -10,4 +10,4 @@ spec:
   ports:
   - port: 443
     targetPort: 6443
-    nodePort: 30443
+    nodePort: {{ .RegistrationWebhookNodePort }}

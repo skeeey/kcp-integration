@@ -196,6 +196,18 @@ func (c *clusterManagerController) applyWebhooks(ctx context.Context,
 		return fmt.Errorf("the ca bundle is not found in %s/%s", clusterManagerName, caBundleConfigmapKey)
 	}
 
+	regSvc, err := c.hubKubeClient.CoreV1().
+		Services(clusterManagerName).Get(ctx, "cluster-manager-registration-webhook", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	workSvc, err := c.hubKubeClient.CoreV1().
+		Services(clusterManagerName).Get(ctx, "cluster-manager-work-webhook", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
 	workspaceConfig := rest.CopyConfig(c.kcpRestConfig)
 	workspaceConfig.Host = fmt.Sprintf("%s:%s", workspaceConfig.Host, workspaceId)
 
@@ -209,8 +221,8 @@ func (c *clusterManagerController) applyWebhooks(ctx context.Context,
 		WorkWebhookHost         string
 		CABundle                string
 	}{
-		RegistrationWebhookHost: c.registrationWebhookHost,
-		WorkWebhookHost:         c.workWebhookHost,
+		RegistrationWebhookHost: fmt.Sprintf("https://%s:%d", c.registrationWebhookHost, regSvc.Spec.Ports[0].NodePort),
+		WorkWebhookHost:         fmt.Sprintf("https://%s:%d", c.workWebhookHost, workSvc.Spec.Ports[0].NodePort),
 		CABundle:                base64.StdEncoding.EncodeToString([]byte(caBundle)),
 	}
 

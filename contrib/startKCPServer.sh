@@ -4,7 +4,7 @@ CURRENT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 DEMO_DIR="$(cd ${CURRENT_DIR} && pwd)"
 KCP_DIR="${DEMO_DIR}"/kcp
 
-BUILD_BINARY=${BUILD_BINARY:-"true"}
+BUILD_BINARY=${BUILD_BINARY:-"false"}
 
 KCP_SERVER_ARGS=""
 

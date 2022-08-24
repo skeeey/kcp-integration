@@ -4,7 +4,7 @@ CURRENT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 DEMO_DIR="$(cd ${CURRENT_DIR} && pwd)"
 ROOT_DIR="$( cd ${CURRENT_DIR}/.. && pwd)"
 
-BUILD_BINARY=${BUILD_BINARY:-"true"}
+BUILD_BINARY=${BUILD_BINARY:-"false"}
 IN_CLUSTER=${IN_CLUSTER:-"false"}
 
 source "${DEMO_DIR}"/utils
@@ -25,22 +25,30 @@ fi
 rm -rf "${DEMO_DIR}"/kubeconfig
 mkdir -p "${DEMO_DIR}"/kubeconfig
 
-kubectl config view --minify --flatten --context=kind-hub > "${DEMO_DIR}"/kubeconfig/hub.kubeconfig
-kubectl config view --minify --flatten --context=kind-cluster1 > "${DEMO_DIR}"/kubeconfig/cluster1.kubeconfig
+kubectl config view --minify --flatten --context=kind-management > "${DEMO_DIR}"/kubeconfig/management.kubeconfig
+kubectl config view --minify --flatten --context=kind-dev > "${DEMO_DIR}"/kubeconfig/dev.kubeconfig
+kubectl config view --minify --flatten --context=kind-qe > "${DEMO_DIR}"/kubeconfig/qe.kubeconfig
 
-HUB_KUBECONFIG=${DEMO_DIR}/kubeconfig/hub.kubeconfig
+HUB_KUBECONFIG=${DEMO_DIR}/kubeconfig/management.kubeconfig
 KCP_KUBECONFIG="${DEMO_DIR}"/.kcp/root.kubeconfig
 
-export KUBECONFIG=${DEMO_DIR}/kubeconfig/hub.kubeconfig
-echo "Deploy the cluster manager operator on the hub ...."
+export KUBECONFIG=${DEMO_DIR}/kubeconfig/management.kubeconfig
+echo "Deploy the cluster manager operator on the management cluster ...."
 hub_advertise_addr=$(kubectl -n kube-system get cm kubeadm-config -o=jsonpath='{.data.ClusterStatus}' | grep advertiseAddress | awk '{print $2}')
-registration_webhook_host="https://${hub_advertise_addr}:30443"
-work_webhook_host="https://${hub_advertise_addr}:30444"
+registration_webhook_host="${hub_advertise_addr}"
+work_webhook_host="${hub_advertise_addr}"
+# TODO: work webhook need read kube-system/extension-apiserver-authentication
 kubectl kustomize "${DEMO_DIR}"/clustermanager | sed "s/<webhook_public_host_placeholder>/${hub_advertise_addr}/g" | kubectl apply -f -
 unset KUBECONFIG
 
-export KUBECONFIG=${DEMO_DIR}/kubeconfig/cluster1.kubeconfig
-echo "Deploy the klusterlet operator on the cluster1 ...."
+export KUBECONFIG=${DEMO_DIR}/kubeconfig/dev.kubeconfig
+echo "Deploy the klusterlet operator on the dev cluster ...."
+kubectl apply -k "${DEMO_DIR}"/klusterlet
+kubectl create ns open-cluster-management-agent
+unset KUBECONFIG
+
+export KUBECONFIG=${DEMO_DIR}/kubeconfig/qe.kubeconfig
+echo "Deploy the klusterlet operator on the qe cluster ...."
 kubectl apply -k "${DEMO_DIR}"/klusterlet
 kubectl create ns open-cluster-management-agent
 unset KUBECONFIG
@@ -49,7 +57,7 @@ echo "Waiting for KCP server to be started..."
 wait_command "test -f ${DEMO_DIR}/kcp-started"
 
 if [ "$IN_CLUSTER" = "true" ]; then
-    echo "Deploy the kcp-integration controller in the hub cluster with HUB_KUBECONFIG=${HUB_KUBECONFIG}, KCP_KUBECONFIG=${KCP_KUBECONFIG}"
+    echo "Deploy the kcp-integration controller in the management cluster with HUB_KUBECONFIG=${HUB_KUBECONFIG}, KCP_KUBECONFIG=${KCP_KUBECONFIG}"
     pushd $ROOT_DIR
     make deploy
     popd
