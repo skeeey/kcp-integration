@@ -19,14 +19,16 @@ pe "cat workspace/type.yaml"
 pe "kubectl apply -f workspace/type.yaml"
 
 comment "Create a hub workspace in myorg workspace for dev"
-pe "kubectl kcp workspace create dev --type ocmhub"
+pe "kubectl kcp workspace create devhub --type ocmhub"
 
-comment "Wait for the OCM hub is available in the dev hub workspace"
-pe "kubectl get clusterworkspace dev -w -ojsonpath='{range .status.conditions[*]}{.type}{\"\\t\"}{.status}{\"\\n\"}{end}'"
+comment "Wait for the hosted cluster manager is available"
+pe "kubectl get clusterworkspace devhub -w -ojsonpath='{range .status.conditions[*]}{.type}{\"\\t\"}{.status}{\"\\n\"}{end}'"
 
-comment "Create a managed cluster for dev cluster in dev hub workspace"
-pe "kubectl kcp workspace use dev"
+comment "Go to dev hub workspace"
+pe "kubectl kcp workspace use devhub"
+comment "The OCM resources in the dev hub workspace"
 pe "kubectl get crds"
+comment "Create a managed cluster for dev cluster in dev hub workspace"
 pe "kubectl apply -f clusters/dev/managedcluster.yaml"
 
 kubectl config view --kubeconfig "${DEMO_DIR}"/.kcp/demo.kubeconfig --minify --flatten  > "${DEMO_DIR}"/clusters/dev/klusterlet/hub.kubeconfig
@@ -44,14 +46,16 @@ comment "Go back to myorg workspace"
 pe "kubectl kcp workspace use root:myorg"
 
 comment "Create a hub workspace in myorg workspace for qe"
-pe "kubectl kcp workspace create qe --type ocmhub"
+pe "kubectl kcp workspace create qehub --type ocmhub"
 
-comment "Wait for the OCM hub is available in the qe hub workspace"
-pe "kubectl get clusterworkspace qe -w -ojsonpath='{range .status.conditions[*]}{.type}{\"\\t\"}{.status}{\"\\n\"}{end}'"
+comment "Wait for the hosted cluster manager is available"
+pe "kubectl get clusterworkspace qehub -w -ojsonpath='{range .status.conditions[*]}{.type}{\"\\t\"}{.status}{\"\\n\"}{end}'"
 
-comment "Create a managed cluster for qe cluster in qe hub workspace"
-pe "kubectl kcp workspace use qe"
+comment "Go to qe hub workspace"
+pe "kubectl kcp workspace use qehub"
+comment "The OCM resources in the qe hub workspace"
 pe "kubectl get crds"
+comment "Create a managed cluster for qe cluster in qe hub workspace"
 pe "kubectl apply -f clusters/qe/managedcluster.yaml"
 
 kubectl config view --kubeconfig "${DEMO_DIR}"/.kcp/demo.kubeconfig --minify --flatten  > "${DEMO_DIR}"/clusters/qe/klusterlet/hub.kubeconfig
@@ -64,5 +68,9 @@ pe "kubectl get csr -w"
 csr_name=$(kubectl get csr -l open-cluster-management.io/cluster-name=qe | grep Pending | awk '{print $1}')
 pe "kubectl certificate approve ${csr_name}"
 pe "kubectl get managedclusters -w"
+
+comment "Now we have two independent ocm hub control planes in the myorg workspace"
+pe "kubectl kcp workspace use root:myorg"
+pe "kubectl get workspaces"
 
 unset KUBECONFIG

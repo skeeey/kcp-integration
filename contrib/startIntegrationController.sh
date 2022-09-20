@@ -70,9 +70,9 @@ CTRL_ARGS="${CTRL_ARGS} --kcp-signing-cert-file=${DEMO_DIR}/rootca.crt --kcp-sig
 CTRL_ARGS="${CTRL_ARGS} --registration-webhook-host=${registration_webhook_host}"
 CTRL_ARGS="${CTRL_ARGS} --work-webhook-host=${work_webhook_host}"
 
-# (cd "${ROOT_DIR}" && exec "${ROOT_DIR}"/kcp-integration controller ${CTRL_ARGS}) &> kcp-integration-controller.log &
-# KCP_OCM_PID=$!
-# echo "KCP integration controller started: ${KCP_OCM_PID}. Press <ctrl>-C to terminate."
-# wait
+(cd "${ROOT_DIR}" && exec "${ROOT_DIR}"/kcp-integration controller ${CTRL_ARGS}) &> kcp-integration-controller.log &
+KCP_OCM_PID=$!
+echo "KCP integration controller started: ${KCP_OCM_PID}. Press <ctrl>-C to terminate."
+wait
 
-${ROOT_DIR}/kcp-integration controller ${CTRL_ARGS}
+#${ROOT_DIR}/kcp-integration controller ${CTRL_ARGS}
