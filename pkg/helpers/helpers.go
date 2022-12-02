@@ -11,14 +11,10 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 
-	operatorv1client "open-cluster-management.io/api/client/operator/clientset/versioned/typed/operator/v1"
-	operatorv1 "open-cluster-management.io/api/operator/v1"
-
-	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -39,8 +35,7 @@ var (
 func init() {
 	utilruntime.Must(corev1.AddToScheme(genericScheme))
 	utilruntime.Must(rbacv1.AddToScheme(genericScheme))
-	utilruntime.Must(admissionv1.AddToScheme(genericScheme))
-	utilruntime.Must(operatorv1.AddToScheme(genericScheme))
+	utilruntime.Must(apiextensionsv1.AddToScheme(genericScheme))
 }
 
 var ClusterWorkspaceGVR = schema.GroupVersionResource{
@@ -173,7 +168,7 @@ func Indent(indention int, v []byte) string {
 
 func ApplyObjects(ctx context.Context,
 	kubeClient kubernetes.Interface,
-	clusterMangerClient operatorv1client.ClusterManagerInterface,
+	apiExtensionsClient apiextensionsclient.Interface,
 	recorder events.Recorder,
 	manifests embed.FS,
 	config interface{},
@@ -192,6 +187,9 @@ func ApplyObjects(ctx context.Context,
 
 	for _, obj := range objs {
 		switch required := obj.(type) {
+		case *apiextensionsv1.CustomResourceDefinition:
+			_, _, err := resourceapply.ApplyCustomResourceDefinitionV1(ctx, apiExtensionsClient.ApiextensionsV1(), recorder, required)
+			errs = append(errs, err)
 		case *corev1.Namespace:
 			_, _, err := resourceapply.ApplyNamespace(ctx, kubeClient.CoreV1(), recorder, required)
 			errs = append(errs, err)
@@ -209,15 +207,6 @@ func ApplyObjects(ctx context.Context,
 			errs = append(errs, err)
 		case *rbacv1.ClusterRoleBinding:
 			_, _, err := resourceapply.ApplyClusterRoleBinding(ctx, kubeClient.RbacV1(), recorder, required)
-			errs = append(errs, err)
-		case *admissionv1.MutatingWebhookConfiguration:
-			_, _, err := resourceapply.ApplyMutatingWebhookConfiguration(ctx, kubeClient.AdmissionregistrationV1(), recorder, required)
-			errs = append(errs, err)
-		case *admissionv1.ValidatingWebhookConfiguration:
-			_, _, err := resourceapply.ApplyValidatingWebhookConfiguration(ctx, kubeClient.AdmissionregistrationV1(), recorder, required)
-			errs = append(errs, err)
-		case *operatorv1.ClusterManager:
-			err := applyClusterManager(ctx, clusterMangerClient, recorder, required)
 			errs = append(errs, err)
 		}
 	}
@@ -242,31 +231,4 @@ func mustCreateObjectFromTemplate(name string, tb []byte, config interface{}) ru
 	}
 
 	return obj
-}
-
-func applyClusterManager(ctx context.Context, client operatorv1client.ClusterManagerInterface, recorder events.Recorder, required *operatorv1.ClusterManager) error {
-	existing, err := client.Get(ctx, required.Name, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		if _, err := client.Create(ctx, required, metav1.CreateOptions{}); err != nil {
-			return err
-		}
-
-		recorder.Eventf("ClusterManagerNamespaceCreated", "The ClusterManager namespace %s is created in the hub", required.Name)
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	if equality.Semantic.DeepEqual(existing.Spec, required.Spec) {
-		return nil
-	}
-
-	existing = existing.DeepCopy()
-	existing.Spec = required.Spec
-	if _, err := client.Update(ctx, existing, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
-	recorder.Eventf("ClusterManagerNamespaceUpdated", "The ClusterManager namespace %s is updated in the hub", required.Name)
-	return nil
 }

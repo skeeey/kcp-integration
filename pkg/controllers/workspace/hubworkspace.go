@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"context"
-	"embed"
 	"encoding/base64"
 	"fmt"
 	"time"
@@ -30,8 +29,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-//go:embed manifests
-var manifestFiles embed.FS
+//var manifestFiles embed.FS
 
 var hubFiles = []string{
 	"manifests/hub/cluster-manager-namespace.yaml",
@@ -156,7 +154,7 @@ func (c *hubWorkspaceController) prepareClusterManager(ctx context.Context,
 	return helpers.ApplyObjects(
 		ctx,
 		c.hubKubeClient,
-		c.clusterMangerClient,
+		nil,
 		c.eventRecorder,
 		manifestFiles,
 		config,
