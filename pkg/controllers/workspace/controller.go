@@ -7,6 +7,8 @@ import (
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 
+	"open-cluster-management.io/registration/pkg/hub"
+
 	"github.com/skeeey/kcp-integration/pkg/helpers"
 
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -26,7 +28,7 @@ type workspaceController struct {
 	kcpRestConfig   *rest.Config
 	hubKubeClient   kubernetes.Interface
 	workspaceLister cache.GenericLister
-	workspaces      map[string]context.CancelFunc
+	hubs            map[string]context.CancelFunc
 	eventRecorder   events.Recorder
 }
 
@@ -54,7 +56,7 @@ func NewWorkspaceController(
 		kcpRestConfig:   kcpRestConfig,
 		hubKubeClient:   hubKubeClient,
 		workspaceLister: workspaceInformer.Lister(),
-		workspaces:      map[string]context.CancelFunc{},
+		hubs:            map[string]context.CancelFunc{},
 		eventRecorder:   recorder,
 	}
 
@@ -95,7 +97,10 @@ func (c *workspaceController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return err
 	}
 
-	// TODO start registration hub controller for this workspace
+	// start registration hub controllers for this workspace
+	if err := c.startHubControllers(ctx, workspaceName, workspaceConfig); err != nil {
+		return err
+	}
 
 	// TODO create rbac for this workspace
 
@@ -119,4 +124,15 @@ func (c *workspaceController) prepareHubCRDs(ctx context.Context, restConfig *re
 		nil,
 		crds...,
 	)
+}
+
+func (c *workspaceController) startHubControllers(ctx context.Context, workspaceName string, config *rest.Config) error {
+	if c.hubs[workspaceName] != nil {
+		return nil
+	}
+
+	if err := hub.RunControllerManager(ctx, nil); err != nil {
+		return err
+	}
+	return nil
 }

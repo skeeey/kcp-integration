@@ -53,7 +53,62 @@ type ClusterManagerSpec struct {
 	// +optional
 	// +kubebuilder:default={mode: Default}
 	DeployOption ClusterManagerDeployOption `json:"deployOption,omitempty"`
+
+	// RegistrationConfiguration contains the configuration of registration
+	// +optional
+	RegistrationConfiguration *RegistrationConfiguration `json:"registrationConfiguration,omitempty"`
+
+	// WorkConfiguration contains the configuration of work
+	// +optional
+	WorkConfiguration *WorkConfiguration `json:"workConfiguration,omitempty"`
 }
+
+type RegistrationConfiguration struct {
+	// FeatureGates represents the list of feature gates for registration
+	// If it is set empty, default feature gates will be used.
+	// If it is set, featuregate/Foo is an example of one item in FeatureGates:
+	//   1. If featuregate/Foo does not exist, registration-operator will discard it
+	//   2. If featuregate/Foo exists and is false by default. It is now possible to set featuregate/Foo=[false|true]
+	//   3. If featuregate/Foo exists and is true by default. If a cluster-admin upgrading from 1 to 2 wants to continue having featuregate/Foo=false,
+	//  	he can set featuregate/Foo=false before upgrading. Let's say the cluster-admin wants featuregate/Foo=false.
+	// +optional
+	FeatureGates []FeatureGate `json:"featureGates,omitempty"`
+}
+
+type WorkConfiguration struct {
+	// FeatureGates represents the list of feature gates for work
+	// If it is set empty, default feature gates will be used.
+	// If it is set, featuregate/Foo is an example of one item in FeatureGates:
+	//   1. If featuregate/Foo does not exist, registration-operator will discard it
+	//   2. If featuregate/Foo exists and is false by default. It is now possible to set featuregate/Foo=[false|true]
+	//   3. If featuregate/Foo exists and is true by default. If a cluster-admin upgrading from 1 to 2 wants to continue having featuregate/Foo=false,
+	//  	he can set featuregate/Foo=false before upgrading. Let's say the cluster-admin wants featuregate/Foo=false.
+	// +optional
+	FeatureGates []FeatureGate `json:"featureGates,omitempty"`
+}
+
+type FeatureGate struct {
+	// Feature is the key of feature gate. e.g. featuregate/Foo.
+	// +kubebuilder:validation:Required
+	// +required
+	Feature string `json:"feature"`
+
+	// Mode is either Enable, Disable, "" where "" is Disable by default.
+	// In Enable mode, a valid feature gate `featuregate/Foo` will be set to "--featuregate/Foo=true".
+	// In Disable mode, a valid feature gate `featuregate/Foo` will be set to "--featuregate/Foo=false".
+	// +kubebuilder:default:=Disable
+	// +kubebuilder:validation:Enum:=Enable;Disable
+	// +optional
+	Mode FeatureGateModeType `json:"mode,omitempty"`
+}
+
+type FeatureGateModeType string
+
+const (
+	// Valid FeatureGateModeType value is Enable, Disable.
+	FeatureGateModeTypeEnable  FeatureGateModeType = "Enable"
+	FeatureGateModeTypeDisable FeatureGateModeType = "Disable"
+)
 
 // HostedClusterManagerConfiguration represents customized configurations we need to set for clustermanager in the Hosted mode.
 type HostedClusterManagerConfiguration struct {
@@ -247,12 +302,16 @@ type Klusterlet struct {
 
 // KlusterletSpec represents the desired deployment configuration of Klusterlet agent.
 type KlusterletSpec struct {
-	// Namespace is the namespace to deploy the agent.
+	// Namespace is the namespace to deploy the agent on the managed cluster.
 	// The namespace must have a prefix of "open-cluster-management-", and if it is not set,
 	// the namespace of "open-cluster-management-agent" is used to deploy agent.
-	// Note: in Detach mode, this field will be **ignored**, the agent will be deployed to the
-	// namespace with the same name as klusterlet.
+	// In addition, the add-ons are deployed to the namespace of "{Namespace}-addon".
+	// In the Hosted mode, this namespace still exists on the managed cluster to contain
+	// necessary resources, like service accounts, roles and rolebindings, while the agent
+	// is deployed to the namespace with the same name as klusterlet on the management cluster.
 	// +optional
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=^open-cluster-management-[-a-z0-9]*[a-z0-9]$
 	Namespace string `json:"namespace,omitempty"`
 
 	// RegistrationImagePullSpec represents the desired image configuration of registration agent.
@@ -282,6 +341,15 @@ type KlusterletSpec struct {
 	// DeployOption contains the options of deploying a klusterlet
 	// +optional
 	DeployOption KlusterletDeployOption `json:"deployOption,omitempty"`
+
+	// RegistrationConfiguration contains the configuration of registration
+	// +optional
+	RegistrationConfiguration *RegistrationConfiguration `json:"registrationConfiguration,omitempty"`
+
+	// HubApiServerHostAlias contains the host alias for hub api server.
+	// registration-agent and work-agent will use it to communicate with hub api server.
+	// +optional
+	HubApiServerHostAlias *HubApiServerHostAlias `json:"hubApiServerHostAlias,omitempty"`
 }
 
 // ServerURL represents the apiserver url and ca bundle that is accessible externally
@@ -307,6 +375,22 @@ type NodePlacement struct {
 	// The default is an empty list.
 	// +optional
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+}
+
+// HubApiServerHostAlias holds the mapping between IP and hostname that will be injected as an entry in the
+// pod's hosts file.
+type HubApiServerHostAlias struct {
+	// IP address of the host file entry.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+	IP string `json:"ip"`
+
+	// Hostname for the above IP address.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$`
+	Hostname string `json:"hostname"`
 }
 
 // KlusterletStatus represents the current status of Klusterlet agent.
