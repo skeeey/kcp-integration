@@ -1,4 +1,4 @@
-package csr
+package workspace
 
 import (
 	"context"
@@ -7,11 +7,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/skeeey/kcp-integration/pkg/helpers"
 	certificatesv1 "k8s.io/api/certificates/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +22,7 @@ import (
 	certificatesinformers "k8s.io/client-go/informers/certificates/v1"
 	"k8s.io/client-go/kubernetes"
 	certificateslisters "k8s.io/client-go/listers/certificates/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/certificate/csr"
 	"k8s.io/client-go/util/keyutil"
@@ -39,7 +41,9 @@ type csrSigningController struct {
 	certTTL       time.Duration
 	ca            *CertificateAuthority
 	kubeClient    kubernetes.Interface
+	rootConfig    *rest.Config
 	csrLister     certificateslisters.CertificateSigningRequestLister
+	eventRecorder events.Recorder
 }
 
 // NewCSRApprovingController creates a new csr approving controller
@@ -47,6 +51,7 @@ func NewCSRSigningController(
 	workspaceName string,
 	certFile, keyFile string,
 	kubeClient kubernetes.Interface,
+	rootConfig *rest.Config,
 	csrInformer certificatesinformers.CertificateSigningRequestInformer,
 	recorder events.Recorder) factory.Controller {
 	c := &csrSigningController{
@@ -55,7 +60,9 @@ func NewCSRSigningController(
 		keyFile:       keyFile,
 		certTTL:       30 * 24 * time.Hour,
 		kubeClient:    kubeClient,
+		rootConfig:    rootConfig,
 		csrLister:     csrInformer.Lister(),
+		eventRecorder: recorder,
 	}
 	return factory.New().
 		WithInformersQueueKeyFunc(func(obj runtime.Object) string {
@@ -78,16 +85,10 @@ func (c *csrSigningController) sync(ctx context.Context, syncCtx factory.SyncCon
 		return err
 	}
 
-	// csr is not generated for cluster/add-on registration/renewal, do nothing.
-	if _, ok := csr.Labels[spokeClusterNameLabel]; !ok {
+	clusterName, ok := csr.Labels[spokeClusterNameLabel]
+	if !ok {
+		// csr is not generated for cluster/add-on registration/renewal, do nothing.
 		klog.Infof("CertificateSigningRequests %q has no cluster label", csrName)
-		return nil
-	}
-
-	// csr is not approved, do nothing.
-	if !isApproved(csr) {
-		//TODO: approve the csr
-		klog.Infof("CertificateSigningRequests %q has not been approved", csrName)
 		return nil
 	}
 
@@ -122,6 +123,25 @@ func (c *csrSigningController) sync(ctx context.Context, syncCtx factory.SyncCon
 		return nil
 	}
 
+	if !isApproved(csr) {
+		// csr is not approved, approve it.
+		csr.Status.Conditions = append(csr.Status.Conditions, certificatesv1.CertificateSigningRequestCondition{
+			Type:    certificatesv1.CertificateApproved,
+			Status:  v1.ConditionTrue,
+			Reason:  "AutoApproved",
+			Message: "Auto approved by csr contoller.",
+		})
+
+		if _, err = c.kubeClient.CertificatesV1().
+			CertificateSigningRequests().
+			UpdateApproval(ctx, csr.Name, csr, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+
+		klog.Infof("CertificateSigningRequests %q has been approved", csrName)
+		return nil
+	}
+
 	if err = c.initCA(); err != nil {
 		return err
 	}
@@ -144,7 +164,7 @@ func (c *csrSigningController) sync(ctx context.Context, syncCtx factory.SyncCon
 
 	syncCtx.Recorder().Eventf(
 		"ManagedClusterCSRSigned", "managed cluster csr %q is signed in %s", csr.Name, c.workspaceName)
-	return nil
+	return c.prepareClusterAuthorizers(ctx, clusterName)
 }
 
 func (c *csrSigningController) initCA() error {
@@ -225,6 +245,31 @@ func (c *csrSigningController) duration(expirationSeconds *int32) time.Duration 
 	}
 }
 
+func (c *csrSigningController) prepareClusterAuthorizers(ctx context.Context, clusterName string) error {
+	rootKubeClient, err := kubernetes.NewForConfig(c.rootConfig)
+	if err != nil {
+		return err
+	}
+
+	config := struct {
+		WorkspaceName string
+		ClusterName   string
+	}{
+		WorkspaceName: c.workspaceName,
+		ClusterName:   clusterName,
+	}
+
+	return helpers.ApplyObjects(
+		ctx,
+		rootKubeClient,
+		nil,
+		c.eventRecorder,
+		manifestFiles,
+		config,
+		workspaceRBACs...,
+	)
+}
+
 // ParseCSR extracts the CSR from the bytes and decodes it.
 func parseCSR(pemBytes []byte) (*x509.CertificateRequest, error) {
 	block, _ := pem.Decode(pemBytes)
@@ -251,11 +296,11 @@ func isApproved(csr *certificatesv1.CertificateSigningRequest) bool {
 }
 
 func loadCertKeyPair(certFile, keyFile string) ([]byte, []byte, error) {
-	cert, err := ioutil.ReadFile(certFile)
+	cert, err := os.ReadFile(certFile)
 	if err != nil {
 		return nil, nil, err
 	}
-	key, err := ioutil.ReadFile(keyFile)
+	key, err := os.ReadFile(keyFile)
 	if err != nil {
 		return nil, nil, err
 	}

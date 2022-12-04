@@ -13,6 +13,6 @@ RUN GOOS=${OS} \
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 ENV USER_UID=10001
 
-COPY --from=builder /go/src/github.com/skeeey/kcp-integration /
+COPY --from=builder /go/src/github.com/skeeey/kcp-integration/kcp-integration /
 
 USER ${USER_UID}

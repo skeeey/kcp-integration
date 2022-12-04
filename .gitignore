@@ -17,12 +17,15 @@ kcp-integration
 # vendor/
 
 contrib/kcp
+contrib/registration
 contrib/kubeconfig
 contrib/kcp-started
+contrib/hubs
 contrib/*.log
 
 .kcp
 bin
+hub-kubeconfigs
 
 *.kubeconfig
 rootca.*

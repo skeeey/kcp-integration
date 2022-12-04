@@ -3,7 +3,9 @@ package workspace
 import (
 	"context"
 	"embed"
+	"time"
 
+	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 
@@ -29,6 +31,7 @@ type workspaceController struct {
 	hubKubeClient   kubernetes.Interface
 	workspaceLister cache.GenericLister
 	hubs            map[string]context.CancelFunc
+	csrControllers  map[string]context.CancelFunc
 	eventRecorder   events.Recorder
 }
 
@@ -41,6 +44,10 @@ var crds = []string{
 	"manifests/hub/crds/managedclustersetbindings.yaml",
 	"manifests/hub/crds/managedclustersets.yaml",
 	"manifests/hub/crds/manifestworks.yaml",
+}
+
+var workspaceRBACs = []string{
+	"manifests/workspace/workspace-clusterrolebinding.yaml",
 }
 
 func NewWorkspaceController(
@@ -57,6 +64,7 @@ func NewWorkspaceController(
 		hubKubeClient:   hubKubeClient,
 		workspaceLister: workspaceInformer.Lister(),
 		hubs:            map[string]context.CancelFunc{},
+		csrControllers:  map[string]context.CancelFunc{},
 		eventRecorder:   recorder,
 	}
 
@@ -98,19 +106,14 @@ func (c *workspaceController) sync(ctx context.Context, syncCtx factory.SyncCont
 	}
 
 	// start registration hub controllers for this workspace
-	if err := c.startHubControllers(ctx, workspaceName, workspaceConfig); err != nil {
-		return err
-	}
+	c.startHubControllers(ctx, workspaceName, workspaceConfig)
 
-	// TODO create rbac for this workspace
-
-	// TODO start csr controller for this workspace
-
-	return nil
+	// start csr controller for this workspace
+	return c.startCSRControllers(ctx, workspaceName, c.kcpRestConfig, workspaceConfig)
 }
 
-func (c *workspaceController) prepareHubCRDs(ctx context.Context, restConfig *rest.Config) error {
-	workspaceAPIExtensionClient, err := apiextensionsclient.NewForConfig(restConfig)
+func (c *workspaceController) prepareHubCRDs(ctx context.Context, config *rest.Config) error {
+	workspaceAPIExtensionClient, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
 		return err
 	}
@@ -126,13 +129,57 @@ func (c *workspaceController) prepareHubCRDs(ctx context.Context, restConfig *re
 	)
 }
 
-func (c *workspaceController) startHubControllers(ctx context.Context, workspaceName string, config *rest.Config) error {
-	if c.hubs[workspaceName] != nil {
+func (c *workspaceController) startHubControllers(ctx context.Context, name string, config *rest.Config) {
+	if c.hubs[name] != nil {
+		return
+	}
+
+	workspaceCtx, cancel := context.WithCancel(ctx)
+	c.hubs[name] = cancel
+
+	ctrlCtx := &controllercmd.ControllerContext{
+		KubeConfig:    config,
+		EventRecorder: c.eventRecorder.ForComponent(name),
+	}
+
+	go func(ctx context.Context, controllerContext *controllercmd.ControllerContext) {
+		if err := hub.RunControllerManager(ctx, controllerContext); err != nil {
+			klog.Errorf("failed to start hub for workspace %q, %v", name, err)
+			c.hubs[name]()
+			delete(c.hubs, name)
+		}
+	}(workspaceCtx, ctrlCtx)
+}
+
+func (c *workspaceController) startCSRControllers(
+	ctx context.Context, name string, rootConfig, workspaceConfig *rest.Config) error {
+	if c.csrControllers[name] != nil {
 		return nil
 	}
 
-	if err := hub.RunControllerManager(ctx, nil); err != nil {
+	kubeClient, err := kubernetes.NewForConfig(workspaceConfig)
+	if err != nil {
 		return err
 	}
+
+	workspaceCtx, cancel := context.WithCancel(ctx)
+	c.csrControllers[name] = cancel
+
+	kubeInfomer := informers.NewSharedInformerFactory(kubeClient, 10*time.Minute)
+
+	csrSigningController := NewCSRSigningController(
+		name,
+		c.certFile,
+		c.keyFile,
+		kubeClient,
+		rootConfig,
+		kubeInfomer.Certificates().V1().CertificateSigningRequests(),
+		c.eventRecorder,
+	)
+
+	go kubeInfomer.Start(workspaceCtx.Done())
+
+	go csrSigningController.Run(workspaceCtx, 1)
+
 	return nil
 }

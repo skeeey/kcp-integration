@@ -1099,8 +1099,6 @@ open-cluster-management.io/api/client/cluster/listers/cluster/v1
 open-cluster-management.io/api/client/cluster/listers/cluster/v1alpha1
 open-cluster-management.io/api/client/cluster/listers/cluster/v1beta1
 open-cluster-management.io/api/client/cluster/listers/cluster/v1beta2
-open-cluster-management.io/api/client/operator/clientset/versioned/scheme
-open-cluster-management.io/api/client/operator/clientset/versioned/typed/operator/v1
 open-cluster-management.io/api/client/work/clientset/versioned
 open-cluster-management.io/api/client/work/clientset/versioned/scheme
 open-cluster-management.io/api/client/work/clientset/versioned/typed/work/v1
@@ -1114,7 +1112,6 @@ open-cluster-management.io/api/cluster/v1alpha1
 open-cluster-management.io/api/cluster/v1beta1
 open-cluster-management.io/api/cluster/v1beta2
 open-cluster-management.io/api/feature
-open-cluster-management.io/api/operator/v1
 open-cluster-management.io/api/work/v1
 # open-cluster-management.io/registration v0.9.0
 ## explicit; go 1.18
