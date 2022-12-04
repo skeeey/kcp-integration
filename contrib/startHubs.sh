@@ -11,9 +11,9 @@ clear
 
 mkdir -p "${DEMO_DIR}"/hubs
 
-hubs=2
+hubs=${1:-1}
 
-echo ">>> Prepare $hubs hubs ..."
+echo ">>> Prepare $hubs hubs"
 export KUBECONFIG="${DEMO_DIR}"/root.kubeconfig
 kubectl apply -f workspace/type.yaml
 for((i=0;i<$hubs;i++));

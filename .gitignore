@@ -23,6 +23,8 @@ contrib/kcp-started
 contrib/hubs
 contrib/*.log
 
+metrics*
+
 .kcp
 bin
 hub-kubeconfigs

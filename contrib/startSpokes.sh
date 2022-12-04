@@ -9,26 +9,26 @@ clear
 rm -rf "${DEMO_DIR}"/hub-kubeconfigs
 rm -f "${DEMO_DIR}"/*.log
 
-#export KUBECONFIG="${DEMO_DIR}"/spoke.kubeconfig
 kubectl delete namespace open-cluster-management-agent --ignore-not-found
 kubectl create namespace open-cluster-management-agent
-#unset KUBECONFIG
 
 function create_cluster() {
-  hubname=$1
-  listenPort=$2
-  clusters=1
+  hub_index=$1
+  listenPort=$((8443+10*hub_index))
+  hub_name="hub${hub_index}"
+
+  clusters=5
   for((i=0;i<$clusters;i++));
   do
     clustername="cluster$i"
-    spokename="${hubname}-${clustername}"
-    echo "create cluster ${clustername} in hub ${hubname} port=$listenPort"
+    spokename="${hub_name}-${clustername}"
+    echo ">>> Create cluster ${clustername} in hub ${hub_name} (port=$listenPort)"
     #continue
 
     kubectl delete namespace ${spokename} --ignore-not-found
     kubectl create namespace ${spokename}
 
-    bootstrap_kubeconfig="${HUB_DIR}/${hubname}.kubeconfig"
+    bootstrap_kubeconfig="${HUB_DIR}/${hub_name}.kubeconfig"
 
     export KUBECONFIG="${bootstrap_kubeconfig}"
     cat <<EOF | kubectl apply -f -
@@ -58,13 +58,14 @@ EOF
     (cd "${DEMO_DIR}" && exec "${DEMO_DIR}"/registration/bin/registration agent $args) &> ${spokename}.log &
     agent_id=$!
     echo "Agent started: $agent_id"
+
+    listenPort=$(($listenPort + 1))
+    sleep 2
   done
 }
 
-hubs=2
-port=8443
+hubs=$(find "${DEMO_DIR}"/hubs -name "hub*.kubeconfig" | wc -l)
 for((h=0;h<$hubs;h++));
 do
-  create_cluster "hub$h" "$port"
-  port=$(($port + 1))
+  create_cluster "$h"
 done
