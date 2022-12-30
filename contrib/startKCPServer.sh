@@ -8,6 +8,8 @@ source "${DEMO_DIR}"/utils
 
 rm -rf ${DEMO_DIR}/.kcp
 
+"${KCP_DIR}"/bin/kcp --version
+
 generate_ca "${DEMO_DIR}"
 KCP_SERVER_ARGS="${KCP_SERVER_ARGS} --client-ca-file ${DEMO_DIR}/rootca.crt"
 

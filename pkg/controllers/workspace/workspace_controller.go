@@ -9,7 +9,8 @@ import (
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 
-	"open-cluster-management.io/registration/pkg/hub"
+	placement "open-cluster-management.io/placement/pkg/controllers"
+	registration "open-cluster-management.io/registration/pkg/hub"
 
 	"github.com/skeeey/kcp-integration/pkg/helpers"
 
@@ -39,11 +40,14 @@ type workspaceController struct {
 var manifestFiles embed.FS
 
 var crds = []string{
+	"manifests/hub/crds/addonplacementscores.yaml",
 	"manifests/hub/crds/managedclusteraddons.yaml",
 	"manifests/hub/crds/managedclusters.yaml",
 	"manifests/hub/crds/managedclustersetbindings.yaml",
 	"manifests/hub/crds/managedclustersets.yaml",
 	"manifests/hub/crds/manifestworks.yaml",
+	"manifests/hub/crds/placementdecisions.yaml",
+	"manifests/hub/crds/placements.yaml",
 }
 
 var workspaceRBACs = []string{
@@ -143,12 +147,25 @@ func (c *workspaceController) startHubControllers(ctx context.Context, name stri
 	}
 
 	go func(ctx context.Context, controllerContext *controllercmd.ControllerContext) {
-		if err := hub.RunControllerManager(ctx, controllerContext); err != nil {
+		if err := registration.RunControllerManager(ctx, controllerContext); err != nil {
 			klog.Errorf("failed to start hub for workspace %q, %v", name, err)
-			c.hubs[name]()
+			if cancel, ok := c.hubs[name]; ok {
+				cancel()
+			}
 			delete(c.hubs, name)
 		}
 	}(workspaceCtx, ctrlCtx)
+
+	go func(ctx context.Context, controllerContext *controllercmd.ControllerContext) {
+		if err := placement.RunControllerManager(ctx, controllerContext); err != nil {
+			klog.Errorf("failed to start hub for workspace %q, %v", name, err)
+			if cancel, ok := c.hubs[name]; ok {
+				cancel()
+			}
+			delete(c.hubs, name)
+		}
+	}(workspaceCtx, ctrlCtx)
+
 }
 
 func (c *workspaceController) startCSRControllers(
