@@ -24,11 +24,11 @@ import (
 	"open-cluster-management.io/governance-policy-addon-controller/pkg/addon/configpolicy"
 	"open-cluster-management.io/governance-policy-addon-controller/pkg/addon/policyframework"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
-	automationctrl "open-cluster-management.io/governance-policy-propagator/controllers/automation"
-	encryptionkeysctrl "open-cluster-management.io/governance-policy-propagator/controllers/encryptionkeys"
-	metricsctrl "open-cluster-management.io/governance-policy-propagator/controllers/policymetrics"
+	"open-cluster-management.io/governance-policy-propagator/controllers/automation"
+	"open-cluster-management.io/governance-policy-propagator/controllers/encryptionkeys"
+	"open-cluster-management.io/governance-policy-propagator/controllers/policymetrics"
 	policysetctrl "open-cluster-management.io/governance-policy-propagator/controllers/policyset"
-	propagatorctrl "open-cluster-management.io/governance-policy-propagator/controllers/propagator"
+	"open-cluster-management.io/governance-policy-propagator/controllers/propagator"
 )
 
 const (
@@ -92,58 +92,61 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 	}
 
 	go func() {
-		err := dynamicWatcher.Start(context.TODO())
-		if err != nil {
-			klog.Error(err, "Unable to start the dynamic watcher", "controller", propagatorctrl.ControllerName)
+		if err := dynamicWatcher.Start(context.TODO()); err != nil {
+			klog.Error(err, "Unable to start the dynamic watcher", "controller", propagator.ControllerName)
 		}
 	}()
 
-	if err = (&propagatorctrl.PolicyReconciler{
+	propagatorCtrl := &propagator.PolicyReconciler{
 		Client:         ctrlManager.GetClient(),
 		Scheme:         ctrlManager.GetScheme(),
-		Recorder:       ctrlManager.GetEventRecorderFor(propagatorctrl.ControllerName),
+		Recorder:       ctrlManager.GetEventRecorderFor(propagator.ControllerName),
 		DynamicWatcher: dynamicWatcher,
-	}).SetupWithManager(ctrlManager, dynamicWatcherSource); err != nil {
+	}
+	if err := propagatorCtrl.SetupWithManager(ctrlManager, dynamicWatcherSource); err != nil {
 		return err
 	}
 
-	if strings.EqualFold(os.Getenv("DISABLE_REPORT_METRICS"), "true") {
-		if err = (&metricsctrl.MetricReconciler{
+	if !strings.EqualFold(os.Getenv("DISABLE_REPORT_METRICS"), "true") {
+		policymetricsCtrl := &policymetrics.MetricReconciler{
 			Client: ctrlManager.GetClient(),
 			Scheme: ctrlManager.GetScheme(),
-		}).SetupWithManager(ctrlManager); err != nil {
+		}
+		if err := policymetricsCtrl.SetupWithManager(ctrlManager); err != nil {
 			return err
 		}
 	}
 
-	if err = (&automationctrl.PolicyAutomationReconciler{
+	automationCtrl := &automation.PolicyAutomationReconciler{
 		Client:        ctrlManager.GetClient(),
 		DynamicClient: addOnCtx.DynamicClient,
 		Scheme:        ctrlManager.GetScheme(),
-		Recorder:      ctrlManager.GetEventRecorderFor(automationctrl.ControllerName),
-	}).SetupWithManager(ctrlManager); err != nil {
+		Recorder:      ctrlManager.GetEventRecorderFor(automation.ControllerName),
+	}
+	if err := automationCtrl.SetupWithManager(ctrlManager); err != nil {
 		return err
 	}
 
-	if err = (&policysetctrl.PolicySetReconciler{
+	policysetCtrl := &policysetctrl.PolicySetReconciler{
 		Client:   ctrlManager.GetClient(),
 		Scheme:   ctrlManager.GetScheme(),
 		Recorder: ctrlManager.GetEventRecorderFor(policysetctrl.ControllerName),
-	}).SetupWithManager(ctrlManager); err != nil {
+	}
+	if err := policysetCtrl.SetupWithManager(ctrlManager); err != nil {
 		return err
 	}
 
-	// TODO: allow KeyRotationDays & MaxConcurrentReconciles configuration
-	if err = (&encryptionkeysctrl.EncryptionKeysReconciler{
+	encryptionkeysCtrl := &encryptionkeys.EncryptionKeysReconciler{
 		Client:                  ctrlManager.GetClient(),
 		KeyRotationDays:         30,
 		MaxConcurrentReconciles: 10,
 		Scheme:                  ctrlManager.GetScheme(),
-	}).SetupWithManager(ctrlManager); err != nil {
+	}
+	if err := encryptionkeysCtrl.SetupWithManager(ctrlManager); err != nil {
 		return err
 	}
 
-	propagatorctrl.Initialize(addOnCtx.CtrlContext.KubeConfig, &addOnCtx.KubeClient)
+	propagator.Initialize(addOnCtx.CtrlContext.KubeConfig, &addOnCtx.KubeClient)
 
 	cache := ctrlManager.GetCache()
 

@@ -61,11 +61,13 @@ func StartAddOnManagers(ctx context.Context, addOnCtx *helpers.AddOnManagerConte
 		return
 	}
 
+	// add managed-serviceaccount addon manager
 	if err := managedsa.AddAddon(addOnCtx, addonManager, ctrlManager); err != nil {
 		klog.Errorf("unable to add managed-serviceaccount addon manager %v", err)
 		return
 	}
 
+	// add policy addon manager
 	if err := policy.AddAddon(addOnCtx, addonManager, ctrlManager); err != nil {
 		klog.Errorf("unable to add policy addon manager %v", err)
 	}
