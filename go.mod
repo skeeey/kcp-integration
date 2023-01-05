@@ -18,7 +18,7 @@ require (
 	open-cluster-management.io/addon-framework v0.5.1-0.20221206033210-55b40b1bc8c6
 	open-cluster-management.io/api v0.9.1-0.20221107101616-fde10e6996f6
 	open-cluster-management.io/governance-policy-propagator v0.9.0
-	open-cluster-management.io/managed-serviceaccount v0.2.0
+	open-cluster-management.io/managed-serviceaccount v0.2.1-0.20221125051317-2ebb47b67877
 	open-cluster-management.io/multicloud-operators-subscription v0.9.0
 	open-cluster-management.io/placement v0.9.0
 	open-cluster-management.io/registration v0.9.0

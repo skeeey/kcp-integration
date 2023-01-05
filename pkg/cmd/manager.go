@@ -5,6 +5,8 @@ import (
 
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 
+	msafeatures "open-cluster-management.io/managed-serviceaccount/pkg/features"
+
 	"github.com/skeeey/kcp-integration/pkg/controllers"
 	"github.com/skeeey/kcp-integration/pkg/version"
 )
@@ -18,8 +20,9 @@ func NewManager() *cobra.Command {
 	cmd.Short = "Start the kcp integration controller"
 
 	flags := cmd.Flags()
+	msafeatures.FeatureGates.AddFlag(flags)
 	o.AddFlags(flags)
-	flags.BoolVar(&cmdConfig.DisableLeaderElection, "disable-leader-election", false, "Disable leader election for the controller.")
 
+	flags.BoolVar(&cmdConfig.DisableLeaderElection, "disable-leader-election", false, "Disable leader election for the controller.")
 	return cmd
 }
