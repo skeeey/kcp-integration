@@ -158,12 +158,13 @@ func (c *workspaceController) startHubControllers(ctx context.Context, name stri
 	c.hubs[name] = cancel
 
 	ctrlCtx := &controllercmd.ControllerContext{
-		KubeConfig:    config,
-		EventRecorder: c.eventRecorder.ForComponent(name),
+		KubeConfig:        config,
+		EventRecorder:     c.eventRecorder.ForComponent(name),
+		OperatorNamespace: "open-cluster-management-hub",
 	}
 
-	addOnCtx := &addons.AddOnManagerContext{
-		RestConfig:  config,
+	addOnCtx := &helpers.AddOnManagerContext{
+		CtrlContext: ctrlCtx,
 		KubeClient:  kubeClient,
 		AddOnClient: addOnClient,
 	}

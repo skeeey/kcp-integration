@@ -16,6 +16,9 @@ github.com/Masterminds/sprig/v3
 # github.com/NYTimes/gziphandler v1.1.1
 ## explicit; go 1.11
 github.com/NYTimes/gziphandler
+# github.com/avast/retry-go/v3 v3.1.1
+## explicit; go 1.13
+github.com/avast/retry-go/v3
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
@@ -279,6 +282,10 @@ github.com/pkg/errors
 # github.com/pkg/profile v1.3.0
 ## explicit
 github.com/pkg/profile
+# github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.57.0
+## explicit; go 1.17
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1
 # github.com/prometheus/client_golang v1.12.2
 ## explicit; go 1.13
 github.com/prometheus/client_golang/prometheus
@@ -323,6 +330,12 @@ github.com/spf13/pflag
 github.com/stolostron/cluster-lifecycle-api/clusterinfo/v1beta1
 github.com/stolostron/cluster-lifecycle-api/helpers/imageregistry
 github.com/stolostron/cluster-lifecycle-api/imageregistry/v1alpha1
+# github.com/stolostron/go-template-utils/v3 v3.0.1
+## explicit; go 1.19
+github.com/stolostron/go-template-utils/v3/pkg/templates
+# github.com/stolostron/kubernetes-dependency-watches v0.1.0
+## explicit; go 1.18
+github.com/stolostron/kubernetes-dependency-watches/client
 # github.com/stolostron/multicloud-operators-foundation v0.0.0-20221212015215-f8043f62d6f7
 ## explicit; go 1.19
 github.com/stolostron/multicloud-operators-foundation/pkg/addon
@@ -1236,10 +1249,21 @@ open-cluster-management.io/api/cluster/v1beta1
 open-cluster-management.io/api/cluster/v1beta2
 open-cluster-management.io/api/feature
 open-cluster-management.io/api/work/v1
-# open-cluster-management.io/governance-policy-propagator v0.9.0
+# open-cluster-management.io/governance-policy-addon-controller v0.9.0
+## explicit; go 1.19
+open-cluster-management.io/governance-policy-addon-controller/pkg/addon
+open-cluster-management.io/governance-policy-addon-controller/pkg/addon/configpolicy
+open-cluster-management.io/governance-policy-addon-controller/pkg/addon/policyframework
+# open-cluster-management.io/governance-policy-propagator v0.9.1-0.20221201165426-f610c4b09b06
 ## explicit; go 1.19
 open-cluster-management.io/governance-policy-propagator/api/v1
 open-cluster-management.io/governance-policy-propagator/api/v1beta1
+open-cluster-management.io/governance-policy-propagator/controllers/automation
+open-cluster-management.io/governance-policy-propagator/controllers/common
+open-cluster-management.io/governance-policy-propagator/controllers/encryptionkeys
+open-cluster-management.io/governance-policy-propagator/controllers/policymetrics
+open-cluster-management.io/governance-policy-propagator/controllers/policyset
+open-cluster-management.io/governance-policy-propagator/controllers/propagator
 # open-cluster-management.io/managed-serviceaccount v0.2.1-0.20221125051317-2ebb47b67877
 ## explicit; go 1.19
 open-cluster-management.io/managed-serviceaccount/api/v1alpha1

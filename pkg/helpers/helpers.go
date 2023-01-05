@@ -8,8 +8,11 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
+
+	addonclientset "open-cluster-management.io/api/client/addon/clientset/versioned"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -23,8 +26,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 )
+
+type AddOnManagerContext struct {
+	CtrlContext   *controllercmd.ControllerContext
+	KubeClient    kubernetes.Interface
+	DynamicClient dynamic.Interface
+	AddOnClient   addonclientset.Interface
+}
 
 var (
 	genericScheme = runtime.NewScheme()

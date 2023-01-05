@@ -91,6 +91,8 @@ github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=
 github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=
+github.com/avast/retry-go/v3 v3.1.1 h1:49Scxf4v8PmiQ/nY0aY3p0hDueqSmc7++cBbtiDGu2g=
+github.com/avast/retry-go/v3 v3.1.1/go.mod h1:6cXRK369RpzFL3UQGqIUp9Q7GDrams+KsYWrfNA1/nQ=
 github.com/benbjohnson/clock v1.0.3/go.mod h1:bGMdMPoPVvcYyt1gHDf4J2KE153Yf9BuiUKYMaxlTDM=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -581,6 +583,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021/go.mod h1:prYjPmNq4d1NPVmpShWobRqXY3q7Vp+80DqgxxUrUIA=
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.57.0 h1:dslXhV7NbAFID2fh0ZLMjodbMYuitiJzDEpYNOoyRrg=
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.57.0/go.mod h1:tflNO6iwG09icVcOe2VfhC73fmtKSKT1aNXYnVtAumU=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3/go.mod h1:/TN21ttK/J9q6uSwhBd54HahCDft0ttaMvbicHlPoso=
 github.com/prometheus/client_golang v1.0.0/go.mod h1:db9x61etRT2tGnBNRi70OPL5FsnadC4Ky3P0J6CfImo=
@@ -670,6 +674,10 @@ github.com/spf13/viper v1.7.0/go.mod h1:8WkrPz2fc9jxqZNCJI/76HCieCp4Q8HaLFoCha5q
 github.com/stoewer/go-strcase v1.2.0/go.mod h1:IBiWB2sKIp3wVVQ3Y035++gc+knqhUQag1KpM8ahLw8=
 github.com/stolostron/cluster-lifecycle-api v0.0.0-20221107031926-6f0a02d2aaf5 h1:+6YaBfE6Zy7du0LOxrdMEp96sXrNqlKU4kOBXxf5yqo=
 github.com/stolostron/cluster-lifecycle-api v0.0.0-20221107031926-6f0a02d2aaf5/go.mod h1:pNeVzujoHsTHDloNHVfp1QPYlQy8MkXMuuZme96/x8M=
+github.com/stolostron/go-template-utils/v3 v3.0.1 h1:E+BcQZubHmHWepXjqcSXUNPmzXoWzCLF3pO26w4NNVQ=
+github.com/stolostron/go-template-utils/v3 v3.0.1/go.mod h1:k9qoQ/OH/jOQI5ovfC11QJ6ApWsa3E5rmbkfUAEUF3g=
+github.com/stolostron/kubernetes-dependency-watches v0.1.0 h1:GfqzY6dHhksE0+f3a6oM6ykkUvuS6/qyupzSO/KXBbs=
+github.com/stolostron/kubernetes-dependency-watches v0.1.0/go.mod h1:jGnjY4g8N1PaBqt35EjqNRjymjG0DWqki/2JOLMN1Pg=
 github.com/stolostron/multicloud-operators-foundation v0.0.0-20221212015215-f8043f62d6f7 h1:pwmHDVNpbPRGqHnRE308gNxkb2GTl2ldCaPFXjpoQFk=
 github.com/stolostron/multicloud-operators-foundation v0.0.0-20221212015215-f8043f62d6f7/go.mod h1:LZ9Q1iyf4bgKLiD8ryT2d3ZKMSZnfT7IuXAdStfQ3Bg=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
@@ -1394,8 +1402,10 @@ open-cluster-management.io/addon-framework v0.5.1-0.20221206033210-55b40b1bc8c6 
 open-cluster-management.io/addon-framework v0.5.1-0.20221206033210-55b40b1bc8c6/go.mod h1:Fymctw1tnmCTXnmAMgc0zdHetAw6UaiAsj1S6w5VW6s=
 open-cluster-management.io/api v0.9.1-0.20221107101616-fde10e6996f6 h1:jXx0C2GKScyZSxyyvswxmgspQgx7SnBic80EM57EdOw=
 open-cluster-management.io/api v0.9.1-0.20221107101616-fde10e6996f6/go.mod h1:9KkJPh/zpDevXj2P+zkvSVjC2pq2PQ1JDNLLEes8TEc=
-open-cluster-management.io/governance-policy-propagator v0.9.0 h1:85JxyaUaZb39ZAVBoWQil5nKyIOycqVnQhrZ8gvwaZo=
-open-cluster-management.io/governance-policy-propagator v0.9.0/go.mod h1:qANM1Ww0i7fN90ZDsN9CmPWyRq5kL5ZhuFpBG4MzzDY=
+open-cluster-management.io/governance-policy-addon-controller v0.9.0 h1:QtB/nItXmfb2uItNtm1WMoQE8GfLLyqnnry/8ARkJVQ=
+open-cluster-management.io/governance-policy-addon-controller v0.9.0/go.mod h1:vp1Yg8fWFZBD+DHUtsjq1cn1rPoo6k9c+IDX50YwD+I=
+open-cluster-management.io/governance-policy-propagator v0.9.1-0.20221201165426-f610c4b09b06 h1:jLQ6z7r5JpzxyNm2D2WMnmYEchzc3bhZ5HQxeqqnZ/4=
+open-cluster-management.io/governance-policy-propagator v0.9.1-0.20221201165426-f610c4b09b06/go.mod h1:x6fLeO/pWeUTc2d7WNCjDXXhs0xzMkhmgbousTBPAfI=
 open-cluster-management.io/managed-serviceaccount v0.2.1-0.20221125051317-2ebb47b67877 h1:LD/0xqqYpJtl7ia4CBWg1zuKVoyl/zga3KijRrmTf3I=
 open-cluster-management.io/managed-serviceaccount v0.2.1-0.20221125051317-2ebb47b67877/go.mod h1:XuTtJ373O5rb70sGAZY8SqsjRqio9zXTCtOEG9HFcvU=
 open-cluster-management.io/multicloud-operators-subscription v0.9.0 h1:wpkvc25LluEqvk14smePArLED9hxI0gvSiKSuPbYzWI=
