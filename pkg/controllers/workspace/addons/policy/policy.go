@@ -148,23 +148,20 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 
 	propagator.Initialize(addOnCtx.CtrlContext.KubeConfig, &addOnCtx.KubeClient)
 
-	cache := ctrlManager.GetCache()
-
 	// The following index for the PlacementRef Name is being added to the
 	// client cache to improve the performance of querying PlacementBindings
-	indexFunc := func(obj client.Object) []string {
-		return []string{obj.(*policyv1.PlacementBinding).PlacementRef.Name}
-	}
-
-	if err := cache.IndexField(
-		context.TODO(), &policyv1.PlacementBinding{}, "placementRef.name", indexFunc,
+	if err := ctrlManager.GetCache().IndexField(
+		context.TODO(), &policyv1.PlacementBinding{}, "placementRef.name", func(obj client.Object) []string {
+			return []string{obj.(*policyv1.PlacementBinding).PlacementRef.Name}
+		},
 	); err != nil {
-		panic(err)
+		return err
 	}
 
 	klog.Info("Waiting for the dynamic watcher to start")
 	// This is important to avoid adding watches before the dynamic watcher is ready
 	<-dynamicWatcher.Started()
+	klog.Info("the dynamic watcher is started")
 
 	return nil
 }
