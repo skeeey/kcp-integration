@@ -39,7 +39,7 @@ type csrSigningController struct {
 	certFile      string
 	keyFile       string
 	certTTL       time.Duration
-	ca            *CertificateAuthority
+	ca            *helpers.CertificateAuthority
 	kubeClient    kubernetes.Interface
 	rootConfig    *rest.Config
 	csrLister     certificateslisters.CertificateSigningRequestLister
@@ -194,7 +194,7 @@ func (c *csrSigningController) initCA() error {
 		return fmt.Errorf("error reading CA key file %q: key did not implement crypto.Signer", c.keyFile)
 	}
 
-	c.ca = &CertificateAuthority{
+	c.ca = &helpers.CertificateAuthority{
 		RawCert: certPEM,
 		RawKey:  keyPEM,
 
@@ -209,7 +209,7 @@ func (c *csrSigningController) sign(
 	usages []certificatesv1.KeyUsage,
 	expirationSeconds *int32,
 	now func() time.Time) ([]byte, error) {
-	der, err := c.ca.Sign(x509cr.Raw, PermissiveSigningPolicy{
+	der, err := c.ca.Sign(x509cr.Raw, helpers.PermissiveSigningPolicy{
 		TTL:    c.duration(expirationSeconds),
 		Usages: usages,
 		// this must always be less than the minimum TTL requested by a user

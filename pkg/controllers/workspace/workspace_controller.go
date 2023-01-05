@@ -9,9 +9,11 @@ import (
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 
+	addonclientset "open-cluster-management.io/api/client/addon/clientset/versioned"
 	placement "open-cluster-management.io/placement/pkg/controllers"
 	registration "open-cluster-management.io/registration/pkg/hub"
 
+	"github.com/skeeey/kcp-integration/pkg/controllers/workspace/addons"
 	"github.com/skeeey/kcp-integration/pkg/helpers"
 
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -109,9 +111,13 @@ func (c *workspaceController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return err
 	}
 
+	// TODO put webhook in the kcp server
 	// start registration hub controllers for this workspace
-	c.startHubControllers(ctx, workspaceName, workspaceConfig)
+	if err := c.startHubControllers(ctx, workspaceName, workspaceConfig); err != nil {
+		return err
+	}
 
+	// TODO put this in the kcp server
 	// start csr controller for this workspace
 	return c.startCSRControllers(ctx, workspaceName, c.kcpRestConfig, workspaceConfig)
 }
@@ -133,9 +139,19 @@ func (c *workspaceController) prepareHubCRDs(ctx context.Context, config *rest.C
 	)
 }
 
-func (c *workspaceController) startHubControllers(ctx context.Context, name string, config *rest.Config) {
+func (c *workspaceController) startHubControllers(ctx context.Context, name string, config *rest.Config) error {
 	if c.hubs[name] != nil {
-		return
+		return nil
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	addOnClient, err := addonclientset.NewForConfig(config)
+	if err != nil {
+		return err
 	}
 
 	workspaceCtx, cancel := context.WithCancel(ctx)
@@ -144,6 +160,12 @@ func (c *workspaceController) startHubControllers(ctx context.Context, name stri
 	ctrlCtx := &controllercmd.ControllerContext{
 		KubeConfig:    config,
 		EventRecorder: c.eventRecorder.ForComponent(name),
+	}
+
+	addOnCtx := &addons.AddOnManagerContext{
+		RestConfig:  config,
+		KubeClient:  kubeClient,
+		AddOnClient: addOnClient,
 	}
 
 	go func(ctx context.Context, controllerContext *controllercmd.ControllerContext) {
@@ -166,6 +188,10 @@ func (c *workspaceController) startHubControllers(ctx context.Context, name stri
 		}
 	}(workspaceCtx, ctrlCtx)
 
+	// TODO should handle error
+	go addons.StartAddOnManagers(workspaceCtx, addOnCtx)
+
+	return nil
 }
 
 func (c *workspaceController) startCSRControllers(
