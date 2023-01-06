@@ -18,7 +18,7 @@ const (
 	logCertSecret = "open-cluster-management/ocm-klusterlet-self-signed-secrets"
 )
 
-func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.AddonManager,
+func AddAddon(ctx *helpers.WorkspaceContext, addonManager addonmanager.AddonManager,
 	ctrlManager manager.Manager) error {
 	agentAddon, err := addonfactory.NewAgentAddonFactory(addon.WorkManagerAddonName, addon.ChartFS, addon.ChartDir).
 		WithConfigGVRs(addonfactory.AddOnDeploymentConfigGVR).
@@ -26,12 +26,12 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 			addon.NewGetValuesFunc(workerImage),
 			addonfactory.GetValuesFromAddonAnnotation,
 			addonfactory.GetAddOnDeloymentConfigValues(
-				addonfactory.NewAddOnDeloymentConfigGetter(addOnCtx.AddOnClient),
+				addonfactory.NewAddOnDeloymentConfigGetter(ctx.AddOnClient),
 				addonfactory.ToAddOnNodePlacementValues,
 			),
 		).
-		WithAgentRegistrationOption(addon.NewRegistrationOption(addOnCtx.KubeClient, addon.WorkManagerAddonName)).
-		WithInstallStrategy(agent.InstallAllStrategy("open-cluster-management-agent-addon")).
+		WithAgentRegistrationOption(addon.NewRegistrationOption(ctx.KubeClient, addon.WorkManagerAddonName)).
+		WithInstallStrategy(agent.InstallAllStrategy(addonfactory.AddonDefaultInstallNamespace)).
 		BuildHelmAgentAddon()
 	if err != nil {
 		return err

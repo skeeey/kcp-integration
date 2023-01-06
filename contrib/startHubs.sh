@@ -31,3 +31,13 @@ do
     echo ">>> hub ${hubname} kubeconfig: ${DEMO_DIR}/hubs/${hubname}.kubeconfig"
 done
 unset KUBECONFIG
+
+sleep 5
+
+for((i=0;i<$hubs;i++));
+do
+    echo ">> enable addons in hub$i"
+    export KUBECONFIG="${DEMO_DIR}"/hubs/hub$i.kubeconfig
+    kubectl apply -f "${DEMO_DIR}/addons/clustermanagementaddons"
+    unset KUBECONFIG
+done

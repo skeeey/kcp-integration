@@ -17,7 +17,7 @@ const (
 	managedServiceAccountImage = "quay.io/open-cluster-management/managed-serviceaccount:latest"
 )
 
-func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.AddonManager,
+func AddAddon(ctx *helpers.WorkspaceContext, addonManager addonmanager.AddonManager,
 	ctrlManager runtime.Manager) error {
 	agentAddOn, err := addonfactory.NewAgentAddonFactory(
 		common.AddonName, manager.FS, "manifests/templates").
@@ -25,12 +25,12 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 		WithGetValuesFuncs(
 			manager.GetDefaultValues(managedServiceAccountImage, nil),
 			addonfactory.GetAddOnDeloymentConfigValues(
-				addonfactory.NewAddOnDeloymentConfigGetter(addOnCtx.AddOnClient),
+				addonfactory.NewAddOnDeloymentConfigGetter(ctx.AddOnClient),
 				addonfactory.ToAddOnDeloymentConfigValues,
 			),
 		).
-		WithAgentRegistrationOption(manager.NewRegistrationOption(addOnCtx.KubeClient)).
-		WithInstallStrategy(agent.InstallAllStrategy(common.AddonAgentInstallNamespace)).
+		WithAgentRegistrationOption(manager.NewRegistrationOption(ctx.KubeClient)).
+		WithInstallStrategy(agent.InstallAllStrategy(addonfactory.AddonDefaultInstallNamespace)).
 		BuildTemplateAgentAddon()
 	if err != nil {
 		return err

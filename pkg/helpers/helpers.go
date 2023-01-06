@@ -30,7 +30,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type AddOnManagerContext struct {
+type WorkspaceContext struct {
+	Context       context.Context
 	CtrlContext   *controllercmd.ControllerContext
 	KubeClient    kubernetes.Interface
 	DynamicClient dynamic.Interface

@@ -42,14 +42,25 @@ type workspaceController struct {
 var manifestFiles embed.FS
 
 var crds = []string{
+	"manifests/hub/crds/addondeploymentconfigs.yaml",
 	"manifests/hub/crds/addonplacementscores.yaml",
+	"manifests/hub/crds/clustermanagementaddons.yaml",
+	"manifests/hub/crds/managedclusteractions.yaml",
 	"manifests/hub/crds/managedclusteraddons.yaml",
-	"manifests/hub/crds/managedclusters.yaml",
+	"manifests/hub/crds/managedclusterinfos.yaml",
 	"manifests/hub/crds/managedclustersetbindings.yaml",
 	"manifests/hub/crds/managedclustersets.yaml",
+	"manifests/hub/crds/managedclusters.yaml",
+	"manifests/hub/crds/managedclusterviews.yaml",
+	"manifests/hub/crds/managedserviceaccounts.yaml",
 	"manifests/hub/crds/manifestworks.yaml",
+	"manifests/hub/crds/placementbindings.yaml",
 	"manifests/hub/crds/placementdecisions.yaml",
+	"manifests/hub/crds/placementrules.yaml",
 	"manifests/hub/crds/placements.yaml",
+	"manifests/hub/crds/policies.yaml",
+	"manifests/hub/crds/policyautomations.yaml",
+	"manifests/hub/crds/policysets.yaml",
 }
 
 var workspaceRBACs = []string{
@@ -154,43 +165,42 @@ func (c *workspaceController) startHubControllers(ctx context.Context, name stri
 		return err
 	}
 
-	workspaceCtx, cancel := context.WithCancel(ctx)
+	hubContext, cancel := context.WithCancel(ctx)
 	c.hubs[name] = cancel
 
-	ctrlCtx := &controllercmd.ControllerContext{
-		KubeConfig:        config,
-		EventRecorder:     c.eventRecorder.ForComponent(name),
-		OperatorNamespace: "open-cluster-management-hub",
-	}
-
-	addOnCtx := &helpers.AddOnManagerContext{
-		CtrlContext: ctrlCtx,
+	workspaceCtx := &helpers.WorkspaceContext{
+		Context: hubContext,
+		CtrlContext: &controllercmd.ControllerContext{
+			KubeConfig:        config,
+			EventRecorder:     c.eventRecorder.ForComponent(name),
+			OperatorNamespace: "open-cluster-management-hub",
+		},
 		KubeClient:  kubeClient,
 		AddOnClient: addOnClient,
 	}
 
-	go func(ctx context.Context, controllerContext *controllercmd.ControllerContext) {
-		if err := registration.RunControllerManager(ctx, controllerContext); err != nil {
+	go func(ctx *helpers.WorkspaceContext) {
+		if err := registration.RunControllerManager(ctx.Context, ctx.CtrlContext); err != nil {
 			klog.Errorf("failed to start hub for workspace %q, %v", name, err)
 			if cancel, ok := c.hubs[name]; ok {
 				cancel()
 			}
 			delete(c.hubs, name)
 		}
-	}(workspaceCtx, ctrlCtx)
+	}(workspaceCtx)
 
-	go func(ctx context.Context, controllerContext *controllercmd.ControllerContext) {
-		if err := placement.RunControllerManager(ctx, controllerContext); err != nil {
+	go func(ctx *helpers.WorkspaceContext) {
+		if err := placement.RunControllerManager(ctx.Context, ctx.CtrlContext); err != nil {
 			klog.Errorf("failed to start hub for workspace %q, %v", name, err)
 			if cancel, ok := c.hubs[name]; ok {
 				cancel()
 			}
 			delete(c.hubs, name)
 		}
-	}(workspaceCtx, ctrlCtx)
+	}(workspaceCtx)
 
 	// TODO should handle error
-	go addons.StartAddOnManagers(workspaceCtx, addOnCtx)
+	go addons.StartAddOnManagers(workspaceCtx)
 
 	return nil
 }

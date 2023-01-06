@@ -1,8 +1,6 @@
 package addons
 
 import (
-	"context"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
@@ -40,44 +38,48 @@ func init() {
 	utilruntime.Must(placementrulev1.AddToScheme(scheme))
 }
 
-func StartAddOnManagers(ctx context.Context, addOnCtx *helpers.AddOnManagerContext) {
+func StartAddOnManagers(ctx *helpers.WorkspaceContext) {
 	ctrl.SetLogger(klogr.New())
 
-	addonManager, err := addonmanager.New(addOnCtx.CtrlContext.KubeConfig)
+	addonManager, err := addonmanager.New(ctx.CtrlContext.KubeConfig)
 	if err != nil {
 		klog.Errorf("unable to create addon manager %v", err)
 		return
 	}
 
-	ctrlManager, err := ctrl.NewManager(addOnCtx.CtrlContext.KubeConfig, ctrl.Options{Scheme: scheme})
+	ctrlManager, err := ctrl.NewManager(ctx.CtrlContext.KubeConfig, ctrl.Options{
+		Scheme:             scheme,
+		MetricsBindAddress: "0", //disabel metrics
+	})
 	if err != nil {
 		klog.Errorf("unable to create controller-runtime manager %v", err)
 		return
 	}
 
 	// add work addon manager
-	if err := worker.AddAddon(addOnCtx, addonManager, ctrlManager); err != nil {
+	if err := worker.AddAddon(ctx, addonManager, ctrlManager); err != nil {
 		klog.Errorf("unable to add work addon manager %v", err)
 		return
 	}
 
 	// add managed-serviceaccount addon manager
-	if err := managedsa.AddAddon(addOnCtx, addonManager, ctrlManager); err != nil {
+	if err := managedsa.AddAddon(ctx, addonManager, ctrlManager); err != nil {
 		klog.Errorf("unable to add managed-serviceaccount addon manager %v", err)
 		return
 	}
 
 	// add policy addon manager
-	if err := policy.AddAddon(addOnCtx, addonManager, ctrlManager); err != nil {
+	if err := policy.AddAddon(ctx, addonManager, ctrlManager); err != nil {
 		klog.Errorf("unable to add policy addon manager %v", err)
+		return
 	}
 
-	if err := addonManager.Start(ctx); err != nil {
+	if err := addonManager.Start(ctx.Context); err != nil {
 		klog.Errorf("failed to start addon manager: %v", err)
 		return
 	}
 
-	if err := ctrlManager.Start(ctx); err != nil {
+	if err := ctrlManager.Start(ctx.Context); err != nil {
 		klog.Errorf("unable to start controller-runtime manager %v", err)
 		return
 	}

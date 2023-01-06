@@ -1,7 +1,6 @@
 package policy
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -46,14 +45,14 @@ var agentPermissionFiles = []string{
 	"manifests/hubpermissions/rolebinding.yaml",
 }
 
-func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.AddonManager,
+func AddAddon(ctx *helpers.WorkspaceContext, addonManager addonmanager.AddonManager,
 	ctrlManager manager.Manager) error {
 	policyFrameworkAddon, err := addonfactory.NewAgentAddonFactory(
 		policyFrameworkAddonName, policyframework.FS, "manifests/managedclusterchart").
 		WithGetValuesFuncs(getPolicyFrameworkValues, addonfactory.GetValuesFromAddonAnnotation).
 		WithInstallStrategy(agent.InstallAllStrategy(addonfactory.AddonDefaultInstallNamespace)).
 		WithAgentRegistrationOption(addon.NewRegistrationOption(
-			addOnCtx.CtrlContext,
+			ctx.CtrlContext,
 			policyFrameworkAddonName,
 			agentPermissionFiles,
 			policyframework.FS)).
@@ -72,7 +71,7 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 		WithInstallStrategy(agent.InstallAllStrategy(addonfactory.AddonDefaultInstallNamespace)).
 		WithScheme(addon.Scheme).
 		WithAgentRegistrationOption(addon.NewRegistrationOption(
-			addOnCtx.CtrlContext,
+			ctx.CtrlContext,
 			configPolicyAddonName,
 			agentPermissionFiles,
 			configpolicy.FS)).
@@ -86,13 +85,13 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 	}
 
 	dynamicWatcherReconciler, dynamicWatcherSource := k8sdepwatches.NewControllerRuntimeSource()
-	dynamicWatcher, err := k8sdepwatches.New(addOnCtx.CtrlContext.KubeConfig, dynamicWatcherReconciler, nil)
+	dynamicWatcher, err := k8sdepwatches.New(ctx.CtrlContext.KubeConfig, dynamicWatcherReconciler, nil)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		if err := dynamicWatcher.Start(context.TODO()); err != nil {
+		if err := dynamicWatcher.Start(ctx.Context); err != nil {
 			klog.Error(err, "Unable to start the dynamic watcher", "controller", propagator.ControllerName)
 		}
 	}()
@@ -107,7 +106,7 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 		return err
 	}
 
-	if !strings.EqualFold(os.Getenv("DISABLE_REPORT_METRICS"), "true") {
+	if strings.EqualFold(os.Getenv("ENABLE_REPORT_METRICS"), "true") {
 		policymetricsCtrl := &policymetrics.MetricReconciler{
 			Client: ctrlManager.GetClient(),
 			Scheme: ctrlManager.GetScheme(),
@@ -119,7 +118,7 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 
 	automationCtrl := &automation.PolicyAutomationReconciler{
 		Client:        ctrlManager.GetClient(),
-		DynamicClient: addOnCtx.DynamicClient,
+		DynamicClient: ctx.DynamicClient,
 		Scheme:        ctrlManager.GetScheme(),
 		Recorder:      ctrlManager.GetEventRecorderFor(automation.ControllerName),
 	}
@@ -146,12 +145,12 @@ func AddAddon(addOnCtx *helpers.AddOnManagerContext, addonManager addonmanager.A
 		return err
 	}
 
-	propagator.Initialize(addOnCtx.CtrlContext.KubeConfig, &addOnCtx.KubeClient)
+	propagator.Initialize(ctx.CtrlContext.KubeConfig, &ctx.KubeClient)
 
 	// The following index for the PlacementRef Name is being added to the
 	// client cache to improve the performance of querying PlacementBindings
 	if err := ctrlManager.GetCache().IndexField(
-		context.TODO(), &policyv1.PlacementBinding{}, "placementRef.name", func(obj client.Object) []string {
+		ctx.Context, &policyv1.PlacementBinding{}, "placementRef.name", func(obj client.Object) []string {
 			return []string{obj.(*policyv1.PlacementBinding).PlacementRef.Name}
 		},
 	); err != nil {
@@ -222,21 +221,13 @@ func getPolicyFrameworkValues(cluster *clusterv1.ManagedCluster,
 func getConfigPolicyValues(cluster *clusterv1.ManagedCluster,
 	policy *addonv1alpha1.ManagedClusterAddOn,
 ) (addonfactory.Values, error) {
-	configImage := os.Getenv("CONFIG_POLICY_CONTROLLER_IMAGE")
-	if configImage == "" {
-		configImage = configPolicyControllerImage
-	}
-	proxyImage := os.Getenv("KUBE_RBAC_PROXY_IMAGE")
-	if proxyImage == "" {
-		proxyImage = kubeRBACProxyImage
-	}
 	userValues := configpolicy.UserValues{
 		GlobalValues: addon.GlobalValues{
 			ImagePullPolicy: "IfNotPresent",
 			ImagePullSecret: "open-cluster-management-image-pull-credentials",
 			ImageOverrides: map[string]string{
-				"config_policy_controller": configImage,
-				"kube_rbac_proxy":          proxyImage,
+				"config_policy_controller": configPolicyControllerImage,
+				"kube_rbac_proxy":          kubeRBACProxyImage,
 			},
 			NodeSelector: map[string]string{},
 			ProxyConfig: map[string]string{

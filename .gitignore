@@ -21,6 +21,7 @@ contrib/registration
 contrib/kubeconfig
 contrib/kcp-started
 contrib/hubs
+contrib/spokes
 contrib/*.log
 
 metrics*
@@ -28,6 +29,7 @@ metrics*
 .kcp
 bin
 hub-kubeconfigs
+hub-kubeconfig
 
 *.kubeconfig
 rootca.*

@@ -7,26 +7,17 @@ HUB_DIR="${DEMO_DIR}"/hubs
 clear
 
 rm -rf "${DEMO_DIR}"/hub-kubeconfigs
-rm -f "${DEMO_DIR}"/*.log
-
-kubectl delete namespace open-cluster-management-agent --ignore-not-found
-kubectl create namespace open-cluster-management-agent
 
 function create_cluster() {
   hub_index=$1
-  listenPort=$((8443+10*hub_index))
   hub_name="hub${hub_index}"
 
-  clusters=5
+  clusters=1
   for((i=0;i<$clusters;i++));
   do
     clustername="cluster$i"
     spokename="${hub_name}-${clustername}"
-    echo ">>> Create cluster ${clustername} in hub ${hub_name} (port=$listenPort)"
-    #continue
-
-    kubectl delete namespace ${spokename} --ignore-not-found
-    kubectl create namespace ${spokename}
+    echo ">>> Register cluster ${clustername} in hub ${hub_name}"
 
     bootstrap_kubeconfig="${HUB_DIR}/${hub_name}.kubeconfig"
 
@@ -41,26 +32,32 @@ spec:
 EOF
     unset KUBECONFIG
 
-    hub_kubeconfig_dir="${DEMO_DIR}"/hub-kubeconfigs/${spokename}
-    mkdir -p ${hub_kubeconfig_dir}
+    kubectl config view --kubeconfig "${bootstrap_kubeconfig}" --minify --flatten > "${DEMO_DIR}/klusterlet/bootstrap/hub-kubeconfig"
 
-    args="--disable-leader-election"
-    args="${args} --cluster-name=${clustername}"
-    args="${args} --listen=0.0.0.0:$listenPort"
-    args="${args} --namespace=${spokename}"
-    args="${args} --kubeconfig=${HOME}/.kube/config"
-    args="${args} --bootstrap-kubeconfig=${bootstrap_kubeconfig}"
-    args="${args} --hub-kubeconfig-dir=${hub_kubeconfig_dir}"
-    args="${args} --hub-kubeconfig-secret=${spokename}-hub-kubeconfig"
-    args="${args} --feature-gates=ClusterClaim=false"
-
-    #"${DEMO_DIR}"/bin/registration agent ${args}
-    (cd "${DEMO_DIR}" && exec "${DEMO_DIR}"/registration/bin/registration agent $args) &> ${spokename}.log &
-    agent_id=$!
-    echo "Agent started: $agent_id"
-
-    listenPort=$(($listenPort + 1))
-    sleep 2
+    export KUBECONFIG="${DEMO_DIR}/spokes/${spokename}.kubeconfig"
+    kubectl apply -k "${DEMO_DIR}/klusterlet"
+    kubectl create ns open-cluster-management-agent
+    kubectl apply -k "${DEMO_DIR}/klusterlet/bootstrap"
+    cat <<EOF | kubectl apply -f -
+apiVersion: operator.open-cluster-management.io/v1
+kind: Klusterlet
+metadata:
+  name: klusterlet
+spec:
+  deployOption:
+    mode: Default
+  registrationImagePullSpec: quay.io/open-cluster-management/registration
+  workImagePullSpec: quay.io/open-cluster-management/work
+  clusterName: $clustername
+  namespace: open-cluster-management-agent
+  externalServerURLs:
+  - url: https://localhost
+  registrationConfiguration:
+    featureGates:
+    - feature: AddonManagement
+      mode: Enable
+EOF
+    unset KUBECONFIG
   done
 }
 
