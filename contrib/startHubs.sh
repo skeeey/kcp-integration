@@ -12,11 +12,12 @@ clear
 mkdir -p "${DEMO_DIR}"/hubs
 
 hubs=${1:-1}
+current_hubs=$(find "${DEMO_DIR}"/hubs -name "hub*.kubeconfig" | wc -l)
 
-echo ">>> Prepare $hubs hubs"
+echo ">>> Prepare $hubs hubs, $current_hubs exists"
 export KUBECONFIG="${DEMO_DIR}"/root.kubeconfig
 kubectl apply -f workspace/type.yaml
-for((i=0;i<$hubs;i++));
+for((i=$current_hubs;i<$hubs;i++));
 do
     hubname="hub$i"
     echo ">>> hub ${hubname} is created"
@@ -32,9 +33,10 @@ do
 done
 unset KUBECONFIG
 
+echo ">>> wating hub ready... (10s)"
 sleep 5
 
-for((i=0;i<$hubs;i++));
+for((i=$current_hubs;i<$hubs;i++));
 do
     echo ">> enable addons in hub$i"
     export KUBECONFIG="${DEMO_DIR}"/hubs/hub$i.kubeconfig

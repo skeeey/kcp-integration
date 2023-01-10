@@ -8,11 +8,12 @@ clear
 
 mkdir -p $SPOKE_DIR
 
+clusters=${2:-5}
+
 function create_cluster() {
     hub_index=$1
     hub_name="hub${hub_index}"
 
-    clusters=1
     for((i=0;i<$clusters;i++));
     do
         clustername="cluster$i"
@@ -25,7 +26,8 @@ function create_cluster() {
 }
 
 hubs=$(find "${DEMO_DIR}"/hubs -name "hub*.kubeconfig" | wc -l)
-for((h=0;h<$hubs;h++));
+start_hub=${1:-0}
+for((h=${start_hub};h<$hubs;h++));
 do
   create_cluster "$h"
 done

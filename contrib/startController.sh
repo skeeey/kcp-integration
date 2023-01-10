@@ -4,6 +4,8 @@ CURRENT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 DEMO_DIR="$(cd ${CURRENT_DIR} && pwd)"
 KCP_DATA_DIR="${DEMO_DIR}"/.kcp
 
+clear
+
 namespace="control-plane"
 kubectl delete namespace $namespace --ignore-not-found
 kubectl create namespace $namespace

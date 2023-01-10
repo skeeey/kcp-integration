@@ -7,6 +7,7 @@ HUB_DIR="${DEMO_DIR}"/hubs
 clear
 
 rm -rf "${DEMO_DIR}"/hub-kubeconfigs
+clusters=${2:-5}
 
 function create_cluster() {
   hub_index=$1
@@ -58,11 +59,14 @@ spec:
       mode: Enable
 EOF
     unset KUBECONFIG
+
+    sleep 10
   done
 }
 
 hubs=$(find "${DEMO_DIR}"/hubs -name "hub*.kubeconfig" | wc -l)
-for((h=0;h<$hubs;h++));
+start_hub=${1:-0}
+for((h=$start_hub;h<$hubs;h++));
 do
   create_cluster "$h"
 done
