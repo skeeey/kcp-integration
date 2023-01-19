@@ -3,7 +3,7 @@
 CURRENT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 DEMO_DIR="$(cd ${CURRENT_DIR} && pwd)"
 
-kcp_pid=$1
+kcp_pid=$(ps ax | grep "bin/kcp start" | head -1 | awk '{print $1}')
 
 kcp_mem=$(cat /proc/${kcp_pid}/status | grep VmRSS | awk '{print $2}')
 kcp_mem=$((${kcp_mem}/1024))
