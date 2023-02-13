@@ -20,7 +20,7 @@ spec:
         image: quay.io/skeeey/kcp-integration-controller:latest
         imagePullPolicy: Always
         args:
-          - "/kcp-integration"
+          - "/xcm-connector"
           - "controller"
           - "--disable-leader-election"
           - "--kcp-signing-cert-file=/var/kcp-integration/client-ca/rootca.crt"

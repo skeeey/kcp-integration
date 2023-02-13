@@ -22,6 +22,8 @@ import (
 type ManagerOptions struct {
 	ControlPlaneKubeConfigFile string
 	XCMServer                  string
+	AccessTokenFile            string
+	RefreshTokenFile           string
 }
 
 // NewManagerOptions returns the flags with default value set
@@ -43,6 +45,20 @@ func (o *ManagerOptions) AddFlags(flags *pflag.FlagSet) {
 		"xcm-server",
 		o.XCMServer,
 		"The host url of the xCM server.",
+	)
+
+	flags.StringVar(
+		&o.AccessTokenFile,
+		"xcm-access-token-file",
+		o.AccessTokenFile,
+		"The access token file for xCM server.",
+	)
+
+	flags.StringVar(
+		&o.RefreshTokenFile,
+		"xcm-refresh-token-file",
+		o.RefreshTokenFile,
+		"The refresh token file.",
 	)
 }
 

@@ -13,7 +13,7 @@ include $(addprefix ./vendor/github.com/openshift/build-machinery-go/make/, \
 
 # Image URL to use all building/pushing image targets;
 IMAGE ?= kcp-integration-controller
-IMAGE_TAG?=latest
+IMAGE_TAG?=xcmconnector
 IMAGE_REGISTRY ?= quay.io/skeeey
 IMAGE_NAME?=$(IMAGE_REGISTRY)/$(IMAGE):$(IMAGE_TAG)
 KUBECTL?=kubectl
@@ -32,9 +32,3 @@ GO_TEST_PACKAGES :=./pkg/...
 # $3 - context directory for image build
 # It will generate target "image-$(1)" for building the image and binding it as a prerequisite to target "images".
 $(call build-image,$(IMAGE),$(IMAGE_REGISTRY)/$(IMAGE),./Dockerfile,.)
-
-.PHONY: deploy
-deploy:
-	$(KUBECTL) -n open-cluster-management delete secret kcp-admin-kubeconfig --ignore-not-found --kubeconfig $(HUB_KUBECONFIG)
-	$(KUBECTL) -n open-cluster-management create secret generic kcp-admin-kubeconfig --from-file=admin.kubeconfig=$(KCP_KUBECONFIG) --kubeconfig $(HUB_KUBECONFIG)
-	$(KUBECTL) apply -k deploy/base --kubeconfig $(HUB_KUBECONFIG)

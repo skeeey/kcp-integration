@@ -14,7 +14,7 @@ func NewManager() *cobra.Command {
 	o := controllers.NewManagerOptions()
 	cmdConfig := controllercmd.NewControllerCommandConfig("xcm-connector", version.Get(), o.Run)
 	cmd := cmdConfig.NewCommand()
-	cmd.Use = "connector"
+	cmd.Use = "controller"
 	cmd.Short = "Start the xCM connector"
 
 	flags := cmd.Flags()
