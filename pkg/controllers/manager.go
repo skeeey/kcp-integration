@@ -4,24 +4,24 @@ import (
 	"context"
 	"time"
 
-	"github.com/skeeey/kcp-integration/pkg/controllers/workspace"
-	"github.com/skeeey/kcp-integration/pkg/helpers"
 	"github.com/spf13/pflag"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	"github.com/skeeey/kcp-integration/pkg/controllers/cluster"
 
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
+
+	clusterclient "open-cluster-management.io/api/client/cluster/clientset/versioned"
+	clusterinformers "open-cluster-management.io/api/client/cluster/informers/externalversions"
+
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // ManagerOptions defines the flags for kcp-ocm integration controller manager
 type ManagerOptions struct {
-	KCPKubeConfigFile  string
-	KCPSigningCertFile string
-	KCPSigningKeyFile  string
+	ControlPlaneKubeConfigFile string
+	XCMServer                  string
 }
 
 // NewManagerOptions returns the flags with default value set
@@ -31,49 +31,60 @@ func NewManagerOptions() *ManagerOptions {
 
 // AddFlags register and binds the default flags
 func (o *ManagerOptions) AddFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&o.KCPKubeConfigFile, "kcp-kubeconfig", o.KCPKubeConfigFile, "Location of kcp kubeconfig file to connect to kcp root cluster.")
-	flags.StringVar(&o.KCPSigningCertFile, "kcp-signing-cert-file", o.KCPSigningCertFile, "Location of CA certificate file used to issue certificates in kcp.")
-	flags.StringVar(&o.KCPSigningKeyFile, "kcp-signing-key-file", o.KCPSigningKeyFile, "Location of private key file used to sign certificates in kcp.")
+	flags.StringVar(
+		&o.ControlPlaneKubeConfigFile,
+		"control-plane-kubeconfig",
+		o.ControlPlaneKubeConfigFile,
+		"Location of control plane kubeconfig file to connect to control plane cluster.",
+	)
+
+	flags.StringVar(
+		&o.XCMServer,
+		"xcm-server",
+		o.XCMServer,
+		"The host url of the xCM server.",
+	)
 }
 
 // Run starts all of controllers for kcp-ocm integration
 func (o *ManagerOptions) Run(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
-	kcpKubeConfig, err := clientcmd.BuildConfigFromFlags("", o.KCPKubeConfigFile)
+	controlPlaneKubeConfig, err := clientcmd.BuildConfigFromFlags("", o.ControlPlaneKubeConfigFile)
 	if err != nil {
 		return err
 	}
 
-	hubKubeClient, err := kubernetes.NewForConfig(controllerContext.KubeConfig)
+	kubeClient, err := kubernetes.NewForConfig(controlPlaneKubeConfig)
 	if err != nil {
 		return err
 	}
 
-	kcpDynamicClient, err := dynamic.NewForConfig(kcpKubeConfig)
+	clusterClient, err := clusterclient.NewForConfig(controlPlaneKubeConfig)
 	if err != nil {
 		return err
 	}
 
-	kcpDynamicInformer := dynamicinformer.NewFilteredDynamicSharedInformerFactory(
-		kcpDynamicClient,
-		10*time.Minute,
-		metav1.NamespaceAll,
-		func(listOptions *metav1.ListOptions) {
-			listOptions.LabelSelector = "kcp-integration.open-cluster-management.io/hub=true"
-		},
-	)
+	kubeInfomer := informers.NewSharedInformerFactory(kubeClient, 10*time.Minute)
+	clusterInformers := clusterinformers.NewSharedInformerFactory(clusterClient, 10*time.Minute)
 
-	workspaceController := workspace.NewWorkspaceController(
-		o.KCPSigningCertFile,
-		o.KCPSigningKeyFile,
-		kcpKubeConfig,
-		hubKubeClient,
-		kcpDynamicInformer.ForResource(helpers.ClusterWorkspaceGVR),
+	clusterController := cluster.NewClusterController(
+		clusterClient,
+		clusterInformers.Cluster().V1().ManagedClusters(),
+		o.XCMServer,
 		controllerContext.EventRecorder,
 	)
 
-	go kcpDynamicInformer.Start(ctx.Done())
+	clusterAutoApproveController := cluster.NewClusterAutoApproveController(
+		kubeClient,
+		clusterClient,
+		kubeInfomer.Certificates().V1().CertificateSigningRequests(),
+		controllerContext.EventRecorder,
+	)
 
-	go workspaceController.Run(ctx, 1)
+	go kubeInfomer.Start(ctx.Done())
+	go clusterInformers.Start(ctx.Done())
+
+	go clusterController.Run(ctx, 1)
+	go clusterAutoApproveController.Run(ctx, 1)
 
 	<-ctx.Done()
 	return nil

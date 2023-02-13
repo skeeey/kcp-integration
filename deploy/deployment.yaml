@@ -1,0 +1,35 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: xcm-connector
+  labels:
+    app: xcm-connector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xcm-connector
+  template:
+    metadata:
+      labels:
+        app: xcm-connector
+    spec:
+      serviceAccountName: xcm-connector-sa
+      containers:
+      - name: xcm-connector
+        image: quay.io/skeeey/kcp-integration-controller:latest
+        imagePullPolicy: Always
+        args:
+          - "/kcp-integration"
+          - "controller"
+          - "--disable-leader-election"
+          - "--kcp-signing-cert-file=/var/kcp-integration/client-ca/rootca.crt"
+          - "--kcp-signing-key-file=/var/kcp-integration/client-ca/rootca.key"
+          - "--kcp-kubeconfig=/var/kcp-integration/kcp/admin.kubeconfig"
+        volumeMounts:
+        - name: kcp-admin-kubeconfig
+          mountPath: "/var/kcp-integration/kcp"
+      volumes:
+      - name: kcp-admin-kubeconfig
+        secret:
+          secretName: kcp-admin-kubeconfig

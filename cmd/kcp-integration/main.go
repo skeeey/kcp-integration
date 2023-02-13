@@ -35,8 +35,8 @@ func main() {
 
 func newCommand() *cobra.Command {
 	command := &cobra.Command{
-		Use:   "kcp-integration-controller",
-		Short: "kcp ocm integration controller",
+		Use:   "xcm-connector",
+		Short: "xcm connector",
 		Run: func(cmd *cobra.Command, args []string) {
 			_ = cmd.Help()
 			os.Exit(1)
