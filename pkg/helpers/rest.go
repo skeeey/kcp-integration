@@ -22,57 +22,6 @@ type Cluster struct {
 	Region   string `json:"region"`
 }
 
-func GetAllClusters(url string) ([]Cluster, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get clusters statuscode=%d, status=%s", resp.StatusCode, resp.Status)
-	}
-
-	clusters := []Cluster{}
-	if err := json.NewDecoder(resp.Body).Decode(&clusters); err != nil {
-		return nil, err
-	}
-
-	return clusters, nil
-}
-
-func GetCluster(url string, clusterID string) (*Cluster, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s", url, clusterID), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get cluster %s statuscode=%d, status=%s",
-			clusterID, resp.StatusCode, resp.Status)
-	}
-
-	cluster := &Cluster{}
-	if err := json.NewDecoder(resp.Body).Decode(cluster); err != nil {
-		return nil, err
-	}
-
-	return cluster, nil
-}
-
 func CreateCluster(server string, managedCluster *clusterv1.ManagedCluster) error {
 	clusterData, err := json.Marshal(toCluster(managedCluster))
 	if err != nil {
