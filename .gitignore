@@ -6,6 +6,7 @@
 *.dylib
 
 kcp-integration
+xcm-connector
 
 # Test binary, built with `go test -c`
 *.test

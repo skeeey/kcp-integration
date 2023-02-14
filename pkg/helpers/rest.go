@@ -64,13 +64,19 @@ func toCluster(managedCluster *clusterv1.ManagedCluster) *Cluster {
 		}
 	}
 
+	version := managedCluster.Status.Version.Kubernetes
+	region := findClusterClaims(managedCluster.Status.ClusterClaims, "region.open-cluster-management.io")
+	if region == "unknown" {
+		region = "us-west-1"
+	}
+
 	return &Cluster{
 		ID:       id,
 		Status:   status,
-		Type:     findClusterClaims(managedCluster.Status.ClusterClaims, "product.open-cluster-management.io"),
-		Version:  findClusterClaims(managedCluster.Status.ClusterClaims, "kubeversion.open-cluster-management.io"),
-		Platform: findClusterClaims(managedCluster.Status.ClusterClaims, "platform.open-cluster-management.io"),
-		Region:   findClusterClaims(managedCluster.Status.ClusterClaims, "region.open-cluster-management.io"),
+		Type:     "EKS",
+		Version:  version,
+		Platform: "AWS",
+		Region:   region,
 	}
 }
 

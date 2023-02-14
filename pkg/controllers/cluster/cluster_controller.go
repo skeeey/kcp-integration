@@ -65,7 +65,7 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 	}
 
 	// TODO timeout or retry limits
-	if err := helpers.CreateCluster(fmt.Sprintf("%s/", c.xCMAPIServer), cluster); err != nil {
+	if err := helpers.CreateCluster(c.xCMAPIServer, cluster); err != nil {
 		return err
 	}
 
