@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 
@@ -23,7 +22,11 @@ type Cluster struct {
 }
 
 func CreateCluster(server string, managedCluster *clusterv1.ManagedCluster) error {
-	clusterData, err := json.Marshal(toCluster(managedCluster))
+	cluster := toCluster(managedCluster)
+	if cluster == nil {
+		return nil
+	}
+	clusterData, err := json.Marshal(cluster)
 	if err != nil {
 		return err
 	}
@@ -51,7 +54,10 @@ func CreateCluster(server string, managedCluster *clusterv1.ManagedCluster) erro
 }
 
 func toCluster(managedCluster *clusterv1.ManagedCluster) *Cluster {
-	id := strings.TrimPrefix(managedCluster.Name, "cluster-")
+	id := findClusterClaims(managedCluster.Status.ClusterClaims, "xcmid.open-cluster-management.io")
+	if id == "unknown" {
+		return nil
+	}
 
 	status := "Unknown"
 	available := meta.FindStatusCondition(managedCluster.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)

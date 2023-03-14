@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -13,6 +14,7 @@ import (
 	clusterclient "open-cluster-management.io/api/client/cluster/clientset/versioned"
 	clusterinformers "open-cluster-management.io/api/client/cluster/informers/externalversions"
 
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -64,6 +66,14 @@ func (o *ManagerOptions) AddFlags(flags *pflag.FlagSet) {
 
 // Run starts all of controllers for kcp-ocm integration
 func (o *ManagerOptions) Run(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
+	wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+		if _, err := os.Stat(o.ControlPlaneKubeConfigFile); err != nil {
+			return false, nil
+		}
+
+		return true, nil
+	})
+
 	controlPlaneKubeConfig, err := clientcmd.BuildConfigFromFlags("", o.ControlPlaneKubeConfigFile)
 	if err != nil {
 		return err
